@@ -28,7 +28,10 @@ const MAX_BYTES = 700 * 1024;    // 受限于请求体 1MB，不是受限于 Blo
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8' }
+    headers: Object.assign(
+      { 'content-type': 'application/json; charset=utf-8' },
+      corsHeaders()
+    )
   });
 }
 
@@ -73,8 +76,29 @@ function mergeAll(server, client) {
   return out;
 }
 
-export async function onRequestPost(context) {
+/* 用通吃的 onRequest 而不是 onRequestPost。
+   原因：实测这个平台上 POST 只认 onRequestPost 时会被路由层挡掉（返回平台自己的 404，
+   响应体恒定 2544 字节），而 OPTIONS 却能进函数。换成 onRequest 后由我们自己分派方法，
+   方法匹配这个变量就彻底消失了。 */
+export async function onRequest(context) {
   const { request } = context;
+
+  if (request.method === 'OPTIONS') return onRequestOptions();
+  if (request.method === 'POST') return handle(request);
+
+  return json({ error: '只支持 POST' }, 405);
+}
+
+/* 浏览器直连（file:// 或本地调试）时用得上 */
+function corsHeaders() {
+  return {
+    'access-control-allow-origin': '*',
+    'access-control-allow-methods': 'POST, OPTIONS',
+    'access-control-allow-headers': 'content-type',
+  };
+}
+
+async function handle(request) {
   const s = store();
 
   let body;
@@ -158,8 +182,5 @@ export async function onRequestPost(context) {
 
 /** 浏览器预检 */
 export function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: { 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type' }
-  });
+  return new Response(null, { status: 204, headers: corsHeaders() });
 }
