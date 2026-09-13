@@ -343,6 +343,7 @@ h3.grp:first-child{margin-top:0}
         </div>
         <p class="hint">
           只挑「要跟的事」，闲聊和表情不入库。<br>
+          识别完<b>默认全部勾上</b>，你把不想要的去掉、再点导入就行。<br>
           这些原文只留在你手机上，不会进云端、也不会进备份文件。
         </p>
       </div>
@@ -1811,16 +1812,19 @@ const Sorter = {
 
     const known = Data.tags().map(t => t.name).concat(Data.usedTags());
     this._items = Parser.parse(raw, known);
+    // 默认全部勾上：让用户"去掉不要的"，而不是"挑出要的"（后者在手机上太累）
+    this._items.forEach(it => { it.on = true; });
     this.paint();
-    const n = this._items.filter(i => i.isTodo).length;
-    UI.toast(n ? '挑出 ' + n + ' 件要跟的事' : '没认出明确要跟的事，原文已留档');
+    const n = this._items.length;
+    UI.toast(n ? '挑出 ' + n + ' 条，确认后导入' : '没认出要跟的事，原文已留档');
   },
 
   paint(){
     const out = document.getElementById('sortOut');
     const items = this._items;
+    const chosen = items.filter(i => i.on).length;
     document.getElementById('sortCount').textContent =
-      items.length ? items.filter(i => i.isTodo).length + ' 件待办 / 共 ' + items.length + ' 条' : '';
+      items.length ? '将导入 ' + chosen + ' / 共 ' + items.length + ' 条' : '';
 
     if (!items.length) {
       out.innerHTML = `<div class="empty">这段里没认出要跟的事。<br>
@@ -1832,12 +1836,12 @@ const Sorter = {
       .filter((v,i,a) => a.indexOf(v) === i);
 
     out.innerHTML = items.map((it, i) => `
-      <div class="prow ${it.isTodo ? '' : 'off'}" id="prow${i}">
-        <div class="box" onclick="Sorter.flip(${i})">${it.isTodo ? '✓' : ''}</div>
+      <div class="prow ${it.on ? '' : 'off'}" id="prow${i}">
+        <div class="box" onclick="Sorter.flip(${i})" title="${it.on ? '点一下不导入' : '点一下导入'}">${it.on ? '✓' : ''}</div>
         <div class="grow">
           <div class="txt">${Util.esc(it.text)}</div>
           <div style="margin-top:2px">
-            <span class="tag">${it.isTodo ? '待办' : '备忘（点方框可改成待办）'}</span>
+            <span class="tag pick" onclick="Sorter.toggleKind(${i})" title="点一下切换待办/备忘">${it.isTodo ? '待办' : '备忘'} ⇄</span>
             ${it.due ? `<span class="tag due">${Util.esc(Util.relDate(it.due))}</span>` : ''}
             ${it.src ? `<span class="tag">${Util.esc(it.src)}</span>` : ''}
             ${(it.tags || []).map(t => `<span class="tag">${Util.esc(t)}</span>`).join('')}
@@ -1848,18 +1852,42 @@ const Sorter = {
             <span class="tag pick" onclick="Sorter.pickDate(${i})">${it.due ? '改截止日' : '定截止日'}</span></div>` : ''}
         </div>
       </div>`).join('')
-      + `<div class="row" style="margin-top:16px">
-           <button class="btn" onclick="Sorter.import()">导入选中的</button>
-           <button class="btn ghost" onclick="Sorter.clear()">清空</button>
+      + `<div class="row" style="margin-top:18px">
+           <button class="btn" onclick="Sorter.import()">导入勾选的 ${chosen} 条</button>
+           <button class="btn ghost" onclick="Sorter.pickAll()">全选</button>
+           <button class="btn ghost" onclick="Sorter.pickNone()">全不选</button>
          </div>
-         <p class="hint">方框点一下能改「待办 / 备忘」。标签点一下选中，可以多选。确认没问题再点导入。</p>`;
+         <p class="hint">
+           <b>方框 = 要不要导入</b>（默认全勾上，去掉不想要的就行）。<br>
+           点「待办 ⇄ / 备忘 ⇄」切换类型：<b>待办</b>会进待办清单，<b>备忘</b>只留个记录，不算待办。
+           标签点一下选中，可以多选。
+         </p>`;
   },
 
+  /** 方框：切换"是否导入" */
   flip(i){
+    const it = this._items[i];
+    if (!it) return;
+    it.on = !it.on;
+    this.paint();
+  },
+
+  /** 单独切换待办/备忘（跟"是否导入"分开了，不再挤在方框里） */
+  toggleKind(i){
     const it = this._items[i];
     if (!it) return;
     it.isTodo = !it.isTodo;
     if (!it.isTodo) it.due = '';
+    this.paint();
+  },
+
+  pickAll(){
+    this._items.forEach(it => { it.on = true; });
+    this.paint();
+  },
+
+  pickNone(){
+    this._items.forEach(it => { it.on = false; });
     this.paint();
   },
 
@@ -1884,14 +1912,20 @@ const Sorter = {
   },
 
   import(){
-    const items = this._items.filter(i => i.isTodo);
-    if (!items.length) return UI.toast('没有勾成待办的内容');
-    if (!confirm('把这 ' + items.length + ' 件导入待办清单？\n（原文已经留档，没导入的不会丢）')) return;
+    // 只导入"勾上的"，并保留每条自己的待办/备忘类型
+    const items = this._items.filter(i => i.on);
+    if (!items.length) return UI.toast('一条都没勾，先勾上要导入的');
+    const todoN = items.filter(i => i.isTodo).length;
+    const memoN = items.length - todoN;
+    const parts = [];
+    if (todoN) parts.push(todoN + ' 件待办');
+    if (memoN) parts.push(memoN + ' 条备忘');
+    if (!confirm('导入 ' + parts.join(' + ') + '？\n（原文已留档，没导入的不会丢）')) return;
     items.forEach(it => {
-      it.tags.forEach(n => Data.addTag(n));
-      Data.add({ text: it.text, isTodo: true, due: it.due, tags: it.tags, src: it.src });
+      (it.tags || []).forEach(n => Data.addTag(n));
+      Data.add({ text: it.text, isTodo: !!it.isTodo, due: it.isTodo ? it.due : '', tags: it.tags, src: it.src });
     });
-    UI.toast('导入了 ' + items.length + ' 件');
+    UI.toast('导入了 ' + parts.join(' + '));
     setTimeout(() => App.go('todos'), 700);
   }
 };
