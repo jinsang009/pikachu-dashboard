@@ -1210,23 +1210,42 @@ const Parser = {
   GROUPONLY: /^([\[【(（][^\]】)）]{1,14}[\]】)）]\s*#{0,1})$/,
 
   /* 纯人名（带不带时间戳都算）——这是"谁说的"这层壳，不是内容，不该单独成条 */
-  NAMEONLY: /^[\[【(（]?[\u4e00-\u9fa5A-Za-z0-9_·．\.\- ]{1,14}[\]】)）]?(\s*\d{1,2}[:：]\d{2})?$/,
+  NAMEONLY: /^[\[【(（]?[\u4e00-\u9fa5A-Za-z0-9_·．\.\-（）() ]{1,20}[\]】)）]?(\s*\d{1,2}[:：]\d{2}([:：]\d{2})?(\s*[APap]\.?[Mm]\.?)?)?$/,
+
+  /* ── 聊天记录的「头部」：谁 + 什么时候 ──
+     必须支持这些真实格式，少一种就会漏（实测踩过）：
+       王总 10:32
+       【XX项目群】小张 11:05
+       【金桑(JIN Sang) 9/13 06:33:48PM】      ← 企业微信导出的长这样
+       David 16:20 */
+  HDR_NAME: '[\\u4e00-\\u9fa5A-Za-z0-9_·．\\.\\-（）() ]{1,24}',
+  HDR_FULLTIME: '\\d{1,2}[-/]\\d{1,2}\\s+\\d{1,2}[:：]\\d{2}(?::\\d{2})?(?:\\s*[APap]\\.?[Mm]\\.?)?',
+  HDR_SHORTTIME: '\\d{1,2}[:：]\\d{2}(?::\\d{2})?(?:\\s*[APap]\\.?[Mm]\\.?)?',
+  get HDR_DT(){ return '(?:' + this.HDR_FULLTIME + '|' + this.HDR_SHORTTIME + ')'; },
+  get HEADER_RE(){ return new RegExp('^[\\[【(（]?(' + this.HDR_NAME + ')[\\]】)）]?\\s+(' + this.HDR_DT + ')\\s*[\\]】)）]?\\s*[:：]?\\s*(.*)$'); },
+  /** 整行只有头部、没有正文 */
+  get HEADER_ONLY(){ return new RegExp('^[\\[【(（]?' + this.HDR_NAME + '[\\]】)）]?\\s+' + this.HDR_DT + '\\s*[\\]】)）]?$'); },
+  /** 只有时间，没有人名 */
+  get TIMEONLY_RE(){ return new RegExp('^[\\[【(（]?\\s*' + this.HDR_SHORTTIME + '\\s*[\\]】)）]?$'); },
 
   /* 整行就是个"要做什么"的祈使句，不带"你/请"也认 */
   BARE_ACTION: /^(尽快|抓紧|务必|一定|别忘了?|记得)?\s*(把|将|帮)?[\u4e00-\u9fa5A-Za-z0-9]{2,20}(一下|一份|个|下|给我|过来|过去|上来)$/,
 
-  /** 从一行里认出截止日期，返回 'YYYY-MM-DD' 或 '' */
+  /** 从一行里认出截止日期，返回 'YYYY-MM-DD' 或 ''
+      ⚠️ 顺序有讲究（踩过坑）：
+      聊天记录里"说话时间"常常混在正文里（如 "9/13 06:33PM 明天来一下"）。
+      如果先匹配裸的"数字/数字"，就会把**消息时间**当成**截止日期**（明天反而算成今天）。
+      所以：明确年月日 → 相对日期（今天/明天/下周X）→ 最后才轮到裸数字月日。 */
   detectDue(line, base){
     base = base || Util.today();
     const y = Util.parseDate(base).getFullYear();
     const m = (re) => line.match(re);
     let g;
+    // ① 明确带年份的日期，最可靠
     if ((g = m(/(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})/))) {
       return g[1] + '-' + String(g[2]).padStart(2,'0') + '-' + String(g[3]).padStart(2,'0');
     }
-    if ((g = m(/(\d{1,2})[-/月](\d{1,2})[日号]?/))) {
-      return y + '-' + String(g[1]).padStart(2,'0') + '-' + String(g[2]).padStart(2,'0');
-    }
+    // ② 相对日期（优先于裸数字，避免被"消息时间"抢走）
     if ((g = m(/下周([一二三四五六日天])/))) {
       const off = { 一:0, 二:1, 三:2, 四:3, 五:4, 六:5, 日:6, 天:6 }[g[1]];
       return Util.addDays(Util.mondayOf(base), 7 + off);
@@ -1246,7 +1265,11 @@ const Parser = {
     }
     if (/明天|明日/.test(line)) return Util.addDays(base, 1);
     if (/后天/.test(line)) return Util.addDays(base, 2);
-    if (/今天|今日|下班前|今儿|上午|下午/.test(line)) return base;
+    if (/今天|今日|下班前|今儿/.test(line)) return base;
+    // ③ 裸数字月日（最容易被"消息时间"污染，放最后）
+    if ((g = m(/(\d{1,2})[-/月](\d{1,2})[日号]?/))) {
+      return y + '-' + String(g[1]).padStart(2,'0') + '-' + String(g[2]).padStart(2,'0');
+    }
     /* 英文的日期词 */
     if (/\btomorrow\b/i.test(line)) return Util.addDays(base, 1);
     if (/\btoday\b/i.test(line)) return base;
@@ -1282,17 +1305,17 @@ const Parser = {
     return text.split('\n').map(l => l.trim()).filter(Boolean);
   },
 
-  /** 从行首摘掉「人名 + 时间」这层壳，返回 {who, time, body} */
+  /** 从行首摘掉「人名 + 时间」这层壳，返回 {who, time, body}
+      格式清单见上面 HEADER_RE 的注释。 */
   stripHeader(line){
-    let s = line, who = '', time = '';
-    let m = s.match(/^[\[【(（]?([^\]】)）:：]{1,12})[\]】)）]?\s*(\d{1,2}[:：]\d{2})\s*[:：]?\s*(.*)$/);
-    if (m && !/\d/.test(m[1])) { who = m[1].trim(); time = m[2]; s = m[3]; }
-    else {
-      m = s.match(/^(\d{1,2}[:：]\d{2})\s*[:：]?\s*(.*)$/);
-      if (m) { time = m[1]; s = m[2]; }
+    const m = line.match(this.HEADER_RE);
+    if (m && !/\d/.test(m[1])) {
+      return { who: m[1].trim(), time: m[2], body: (m[3] || '').trim() };
     }
-    if (!s.trim()) s = line;
-    return { who, time, body: s.trim() };
+    // 退一步：只有时间，没有人名
+    const t = line.match(new RegExp('^[\\[【(（]?\\s*(' + this.HDR_SHORTTIME + ')\\s*[\\]】)）]?\\s*[:：]?\\s*(.*)$'));
+    if (t) return { who: '', time: t[1], body: (t[2] || '').trim() };
+    return { who: '', time: '', body: line.trim() };
   },
 
   /** 认来源：优先群名/项目名，其次发言人 */
@@ -1316,6 +1339,9 @@ const Parser = {
   tidy(body){
     let t = body
       .replace(this.REFWD, '')                       // Re: / 转发：
+      // 行首残留的日期/时间（聊天记录里"说话时间"常粘在正文前）
+      .replace(/^\d{1,2}[-/]\d{1,2}\s+\d{1,2}[:：]\d{2}(?::\d{2})?(\s*[APap]\.?[Mm]\.?)?\s*/, '')
+      .replace(/^\d{1,2}[:：]\d{2}(?::\d{2})?(\s*[APap]\.?[Mm]\.?)?\s*/, '')
       .replace(/^[，,、：:；;。\s]+/, '')               // 行首标点
       .replace(/^(另外|还有|对了|其次|然后|再说|顺便)[，,、:：]?\s*/, '')
       .replace(/^(麻烦|请务必|请你|请|需要你|需要|帮忙|记得|别忘了|别忘)\s*/g, '')
@@ -1329,26 +1355,62 @@ const Parser = {
     t = t.slice(0, 200);
     return /^[a-z]/.test(t) ? t.charAt(0).toUpperCase() + t.slice(1) : t;
   },
+
+  /** 合并"名字+时间"单独占一行的情况：
+      企业微信导出常是两行一组 —— 「【张三 9/13 06:33PM】」换行「内容」。
+      不合并的话，名字行会变成一条垃圾待办，而正文丢了来源。 */
+  mergeHeaders(lines){
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+      const cur = lines[i];
+      if (this.HEADER_ONLY.test(cur) && i + 1 < lines.length) {
+        const nx = lines[i + 1];
+        if (!this.HEADER_ONLY.test(nx) && !this.TIMEONLY_RE.test(nx)) {
+          out.push(cur + ' ｜ ' + nx);   // 空格包住分隔符，头部正则才能识别
+          i++;
+          continue;
+        }
+      }
+      out.push(cur);
+    }
+    return out;
+  },
+
   /**
    * 主入口。
    * @returns {Array<{text,isTodo,due,tags,src,raw,time}>}
    */
   parse(raw, knownTags, base){
     const out = [];
-    const lines = this.split(raw);
+    const lines = this.mergeHeaders(this.split(raw));
     const known = (knownTags || []).slice();
     for (const line0 of lines) {
       if (this.QUOTE.test(line0)) continue;
       if (this.META.test(line0)) continue;
       if (this.SUBJECTONLY.test(this.stripHeader(line0).body)) continue;   // "Re: 供应商对接"
 
-      const { who, time, body } = this.stripHeader(line0);
+      const hdr = this.stripHeader(line0);
+      const who = hdr.who, time = hdr.time;
+      let body = hdr.body;
       if (!body) continue;
 
       // 纯人名 / 纯群名 / 纯时间戳：这是"谁说的"那层壳，不是内容
       if (this.TIMEONLY.test(body) || this.TIMEONLY.test(line0)) continue;
+      if (this.TIMEONLY_RE.test(line0) || this.HEADER_ONLY.test(line0)) continue;
       if (this.GROUPONLY.test(body) || this.GROUPONLY.test(line0)) continue;
-      if (this.NAMEONLY.test(body) && body.length <= 16) continue;
+      if (this.NAMEONLY.test(body) && body.length <= 18) continue;
+      // "【名字 时间 ｜ 正文】" 这种合并行，把正文切出来
+      const parts = body.split(/\s*[｜|]\s*/);
+      if (parts.length >= 2 && parts[0].length < 30) {
+        const tail = parts.slice(1).join(' ').trim();
+        if (tail.length >= 1) body = tail;
+      }
+      // 切出正文后要重判一次闲聊（合并前整行带名字，NOISE 判不准）
+      if (body.length < 3) continue;
+      if (this.NOISE.test(body) && body.length < 24) continue;
+
+      // 太短的：单个字/纯语气，几乎不可能是"要跟的事"
+      if (body.length < 3) continue;
 
       const isNoise = this.NOISE.test(body) && body.length < 24;
       const isAction = this.ACTION.test(body) || this.BARE_ACTION.test(body);
@@ -1360,6 +1422,13 @@ const Parser = {
       const isTodo = !isNoise && (isAction || (!!due && body.length >= 8));
 
       if (isNoise && !isTodo) continue;      // 纯闲聊，不留
+
+      /* 当前模式是「只收要跟的事」，所以严格一点：
+         没有动作词、没有截止日、也没命中任何标签的，不收。
+         否则寒暄和通知会把结果列表撑得很长（实测出现过"16 件待办 / 共 17 条"
+         里一半是"好的""收到""早上好"这种 —— 那比手打还累）。
+         想连备忘一起收的用户，把这段改成只判 isNoise 即可。 */
+      if (!isTodo && !tags.length && !due) continue;
 
       out.push({
         text: this.tidy(body),

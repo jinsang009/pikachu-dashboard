@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>一周使用指南</title>
+<style>
+  :root{ --ink:#241f1a; --dim:#7c7167; --line:#e6ded1; --bg:#fffdf8; --accent:#b98900; }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:28px 20px 60px; background:var(--bg); color:var(--ink);
+    font:16px/1.75 -apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    max-width:820px; margin:0 auto; -webkit-text-size-adjust:100%;
+  }
+  h1{font-size:26px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+  h1+p{margin-top:0}
+  h2{
+    font-size:20px;margin:38px 0 12px;padding-top:20px;border-top:2px solid var(--line);
+    line-height:1.35;
+  }
+  h2:first-of-type{border-top:none;padding-top:0}
+  h3{font-size:17px;margin:26px 0 8px;color:#3a322a}
+  h4{font-size:16px;margin:20px 0 6px;color:var(--dim)}
+  p{margin:10px 0}
+  strong{color:#000;font-weight:650}
+  a{color:#0a5fbf;word-break:break-all}
+  code{
+    background:#f2ece1;padding:2px 6px;border-radius:5px;
+    font:14px/1.5 ui-monospace,"SF Mono",Consolas,monospace;color:#8a4b00;
+    word-break:break-all;
+  }
+  pre{
+    background:#241f1a;color:#f4efe6;padding:14px 16px;border-radius:10px;
+    overflow-x:auto;font-size:13.5px;line-height:1.6;
+  }
+  pre code{background:none;color:inherit;padding:0;font-size:13.5px}
+  blockquote{
+    margin:14px 0;padding:12px 16px;background:#fff7e3;
+    border-left:4px solid var(--accent);border-radius:0 8px 8px 0;color:#4a3f33;
+  }
+  blockquote p{margin:6px 0}
+  ul,ol{margin:10px 0;padding-left:24px}
+  li{margin:6px 0}
+  ul.todo{list-style:none;padding-left:4px}
+  ul.todo li{margin:8px 0}
+  ul.todo li.done{color:var(--dim);text-decoration:line-through}
+  hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+  table{
+    width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px;
+    display:block;overflow-x:auto;
+  }
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:#f6f0e4;font-weight:600;white-space:nowrap}
+  @media print{
+    body{padding:0;font-size:12.5px;max-width:none}
+    h2{border-top:1px solid #ccc;margin:18px 0 8px;padding-top:12px}
+    pre{background:#f5f5f5;color:#222;border:1px solid #ddd;font-size:11.5px}
+    blockquote{background:#fafafa;border-left:3px solid #999}
+    table{font-size:11.5px;display:table}
+    th,td{padding:5px 7px}
+    a{color:#222}
+    hr{margin:16px 0}
+  }
+</style></head><body>
+<h1>一周使用指南 · 金桑的皮卡丘</h1>
+<p><strong>手机是主设备，电脑用来生成周报。</strong> 这份是照着做就行的操作手册。</p>
+<hr>
+<h2>第一天 · 把工作台装到手机上（约 5 分钟）</h2>
+<h3>① 传文件</h3>
+<p><strong>电脑上</strong>打开微信 → <strong>文件传输助手</strong> → 把这两个文件拖进去发送：</p>
+<pre><code>D:\Deepseek Work\金桑的皮卡丘\index.html
+D:\Deepseek Work\金桑的皮卡丘\icon.png</code></pre>
+<h3>② 在手机上用「系统浏览器」打开（<strong>关键</strong>）</h3>
+<p><strong>iPhone（用 Safari）</strong></p>
+<ol>
+<li>手机上打开微信文件传输助手，点 <code>index.html</code></li>
+<li>右上角 <strong>「···」→「用其他应用打开」→ 选 Safari</strong></li>
+</ol>
+<p><strong>安卓（用 Chrome 或系统浏览器）</strong></p>
+<ol>
+<li>点 <code>index.html</code> → 右上角 <strong>「···」</strong></li>
+<li>选 <strong>「用浏览器打开」</strong> → 选 Chrome</li>
+</ol>
+<blockquote>⚠️ <strong>绝对不要在微信里直接用。</strong><br>微信内置浏览器会清缓存，<strong>你记的东西关掉就没了</strong>。<br><br><strong>怎么确认跳出来了</strong>：地址栏能看到 <code>file:///...</code> 开头、有浏览器自己的菜单栏。<br>如果顶上还是微信的返回按钮、没有地址栏 → 还在微信里，退出去重来。</blockquote>
+<h3>③ 存成书签（以后一秒打开）</h3>
+<p><strong>Safari</strong>：底部中间 <strong>分享</strong> 按钮 → <strong>「添加书签」</strong> → 存到「个人收藏」</p>
+<p><strong>Chrome</strong>：右上角 <strong>⋮</strong> → 星星图标 → 保存</p>
+<p><strong>以后从书签进。</strong> 这是没有域名时最接近"App 图标"的做法。</p>
+<h3>④ ⚠️ 必须验一次：数据真的存住了吗</h3>
+<p><strong>这一步别跳过。</strong></p>
+<ol>
+<li>打开「随手记」，写一条，比如 <code>测试手机存储</code></li>
+<li><strong>把浏览器从后台完全划掉</strong>（不是只按 Home 键）</li>
+<li>从书签重新打开</li>
+<li><strong>看那条还在不在</strong></li>
+</ol>
+<ul>
+<li><strong>在</strong> → 成了，可以开始天天用</li>
+<li><strong>不在</strong> → 立刻告诉我，得换浏览器或换方案</li>
+</ul>
+<hr>
+<h2>日常怎么记（这是它最值钱的地方）</h2>
+<h3>场景一：微信/企微/邮件里看到要跟的事</h3>
+<p><strong>别手打，直接复制粘贴。</strong></p>
+<ol>
+<li>在微信里长按那条消息 → 复制</li>
+<li>打开工作台 → 「<strong>智能整理</strong>」</li>
+<li>粘到框里 → 点「<strong>识别要跟的事</strong>」</li>
+<li>它会把要跟的事挑出来，<strong>你扫一眼</strong>：</li>
+</ol>
+<ul>
+<li>判断错了 → 点方框改成「待办/备忘」</li>
+<li>缺标签 → 点下面的标签加上</li>
+<li>缺截止日 → 点「定截止日」</li>
+</ul>
+<ol>
+<li>点「<strong>导入选中的</strong>」</li>
+</ol>
+<p><strong>一句话总结：它干掉 80% 的体力活，剩下 20% 你扫一眼补。</strong></p>
+<blockquote>它<strong>不懂语气</strong> —— 「老板语气不太对，这事估计得赶紧办」这种认不出来，得你自己补。</blockquote>
+<h3>场景二：临时想起一件事</h3>
+<p>走「<strong>随手记</strong>」：一个框、一句话、点「记下」。<strong>20 秒完事。</strong></p>
+<p>如果是要跟的事，<strong>「这是个待办」那个勾保持勾选</strong>，再点一下上面的标签。</p>
+<h3>场景三：开会/路上记完，回到电脑上</h3>
+<p>不用管，<strong>每周合并一次就行</strong>（见下）。</p>
+<hr>
+<h2>每天花 2 分钟</h2>
+<h3>早上：「今日」页看一眼</h3>
+<p>打开就是「今天要跟的事」+「今天新进的事」。</p>
+<p><strong>点「📋 复制今日提醒」</strong> → 粘到自己的微信文件传输助手。</p>
+<p><strong>相当于自己给自己发一条提醒。</strong>（网页做不到主动推送，这是最接近的办法。）</p>
+<h3>晚上：「复盘」页写三句</h3>
+<ol>
+<li>今天最重要的三件事</li>
+<li>卡在哪了 —— 谁在等我的东西？什么没推动？</li>
+<li>明天第一件事做什么</li>
+</ol>
+<p><strong>第 3 条会自动变成明天的待办</strong>，不用你再记一遍。</p>
+<blockquote>今天的流水就在下面那张卡里，照着写，两分钟能完事。</blockquote>
+<h3>勾错了怎么办（三条后悔路）</h3>
+<table><thead><tr><th>什么时候后悔</th><th>怎么救</th></tr></thead><tbody><tr><td><strong>刚勾完</strong></td><td>屏幕底部弹提示 → 点 <strong>「撤销」</strong>（停 6 秒）</td></tr><tr><td><strong>过一会儿才想起来</strong></td><td>「待办」页 →「显示已完成的」→ <strong>点那个勾就收回</strong></td></tr><tr><td><strong>在今日页</strong></td><td>最下面「今天完成的」→ <strong>点勾收回</strong></td></tr></tbody></table>
+<hr>
+<h2>每周花 5 分钟（两条纪律）</h2>
+<h3>纪律一：备份（<strong>最重要，别偷懒</strong>）</h3>
+<ol>
+<li>「设置 → 数据备份 → <strong>导出备份</strong>」</li>
+<li>会下载 <code>皮卡丘备份-xxxx-xx-xx.json</code></li>
+<li><strong>转发到微信文件传输助手 / 存百度云 / 存 iCloud</strong></li>
+</ol>
+<p><strong>为什么必须做</strong>：iOS 对本地文件打开的数据有清理机制，<strong>7 天不打开可能被清掉</strong>。</p>
+<p>导出一次，就等于把命保住了。</p>
+<blockquote>工作台会提醒你（超 7 天没备份，顶上冒黄条），但<strong>别等它提醒</strong>。</blockquote>
+<h3>纪律二：和电脑合并一次（要电脑上也有记录才做）</h3>
+<p><strong>它只合并、不覆盖，来回导不会丢数据。</strong></p>
+<p><strong>先 手机 → 电脑：</strong></p>
+<ol>
+<li>手机「导出备份」→ 发微信文件传输助手</li>
+<li>电脑下载那个 json → 「恢复备份」→ 选中它</li>
+</ol>
+<p><strong>再 电脑 → 手机：</strong></p>
+<ol>
+<li>电脑「导出备份」→ 发微信文件传输助手</li>
+<li>手机下载 → 「恢复备份」→ 选中它</li>
+</ol>
+<p>⚠️ <strong>两个方向都要做</strong>，只做一个方向的话只有一边的数据会补过去。</p>
+<hr>
+<h2>周报怎么出（周五下午，3 分钟）</h2>
+<ol>
+<li>电脑上打开工作台 → <strong>「周报」</strong>页</li>
+<li>它已经<strong>按项目分好组</strong>了：本周完成 / 本周新增 / 没做完的顺延</li>
+<li>点「<strong>📋 复制周报</strong>」</li>
+<li>粘到群里或周报文档里，<strong>不用再排版</strong></li>
+</ol>
+<p>往前翻历史周报：点「← 上一周」。月报在「月报」页，同样操作。</p>
+<hr>
+<h2>一周后回来告诉我这几件事</h2>
+<p>我根据这些判断下一步帮你做什么（比如要不要做小程序）：</p>
+<table><thead><tr><th>留意什么</th><th>为什么重要</th></tr></thead><tbody><tr><td><strong>哪些功能天天用、哪些一直没碰</strong></td><td>做小程序时只做常用的，砍掉不用的</td></tr><tr><td><strong>哪个动作觉得"麻烦"</strong></td><td>那是最该优化的地方</td></tr><tr><td><strong>粘聊天记录识别得准不准</strong></td><td>不准我就调规则</td></tr><tr><td><strong>有没有"想记但懒得打开"的时候</strong></td><td>说明需要推送提醒，或者需要更省事的入口</td></tr></tbody></table>
+<p><strong>随手记在手机备忘录里就行，不用特意整理。</strong></p>
+<hr>
+<h2>出问题时的快查</h2>
+<table><thead><tr><th>现象</th><th>怎么办</th></tr></thead><tbody><tr><td>记的东西刷新后没了</td><td>是不是在微信里打开的？必须跳到系统浏览器</td></tr><tr><td>找不到「添加到主屏幕」</td><td><strong>正常</strong> —— 没有域名时加不了桌面。想加要买域名（几十块）</td></tr><tr><td>想换配色</td><td>「设置 → 配色」，三套随便换，不影响数据</td></tr><tr><td>想换头像</td><td>「设置 → 头像 → 上传新头像」，<strong>只存你手机里</strong>，别人看不到</td></tr><tr><td>手机上打开是空的</td><td><strong>正常</strong> —— 数据不跟链接走，跟设备走。要两边都有就用上面的合并流程</td></tr><tr><td>想加个新功能</td><td>直接跟我说「给我的工作台加个喝水提醒」</td></tr></tbody></table>
+<hr>
+<h2>想升级的话（都不急，用顺了再说）</h2>
+<table><thead><tr><th></th><th>花多少</th><th>换来什么</th></tr></thead><tbody><tr><td><strong>买个域名</strong></td><td>几十块/年（<strong>选不含中国大陆节点，不用备案</strong>）</td><td>手机加到桌面像 App + 手机电脑自动同步（不用再手动导）</td></tr><tr><td><strong>做微信小程序</strong></td><td>要重写界面 + 审核 1-7 天</td><td>微信里点开 + <strong>主动推送提醒</strong> + 数据不会被系统清</td></tr></tbody></table>
+<p><strong>建议：先用一周。</strong> 如果你发现真的每天都离不开它，那时候再花这个钱，而且你会更清楚哪些功能常用、哪些可以砍。</p>
+<p><strong>别为了"想要一个 App"而做一个 App。</strong></p>
+</body></html>
