@@ -77,16 +77,21 @@ function mergeAll(server, client) {
 }
 
 /* 用通吃的 onRequest 而不是 onRequestPost。
-   原因：实测这个平台上 POST 只认 onRequestPost 时会被路由层挡掉（返回平台自己的 404，
-   响应体恒定 2544 字节），而 OPTIONS 却能进函数。换成 onRequest 后由我们自己分派方法，
-   方法匹配这个变量就彻底消失了。 */
+   原因（实测，别改回去）：
+   1) 只导出 onRequestPost 时，这个平台的路由层会把 POST 直接挡掉，返回平台自己的 404
+      （响应体恒定 2544 字节，跟请求体大小、Content-Type 都无关）；
+      换成 onRequest 之后请求才能进到函数里。
+   2) 进到函数里之后发现 request.method 的值跟字符串 'POST' 对不上，
+      所以这里**不做方法判断**：只把 OPTIONS 当预检，其余一律当数据请求处理。
+      这是最健壮的写法——同步接口本来也不需要区分 GET/POST。 */
 export async function onRequest(context) {
   const { request } = context;
 
-  if (request.method === 'OPTIONS') return onRequestOptions();
-  if (request.method === 'POST') return handle(request);
+  let m = '';
+  try { m = String((request && request.method) || '').toUpperCase(); } catch (e) { m = ''; }
+  if (m === 'OPTIONS') return onRequestOptions();
 
-  return json({ error: '只支持 POST' }, 405);
+  return handle(request, m);
 }
 
 /* 浏览器直连（file:// 或本地调试）时用得上 */
