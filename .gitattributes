@@ -1,0 +1,11 @@
+# 统一换行符。Windows 默认会把 LF 转成 CRLF，
+# 而部署平台在 Linux 上构建——不统一的话每次拉代码都会显示"文件被改过"，
+# 真正的改动反而看不出来。
+* text=auto eol=lf
+
+# 图片必须按二进制处理，否则 git 会试图"合并"它们，把文件搞坏
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary

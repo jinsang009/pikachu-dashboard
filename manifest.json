@@ -1,0 +1,19 @@
+{
+  "name": "金桑的皮卡丘",
+  "short_name": "皮卡丘",
+  "description": "个人工作小助理：粘贴聊天记录自动整理待办，每天生成今日提醒，自动拼周报月报。数据只存在自己设备上。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#191510",
+  "theme_color": "#211C15",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

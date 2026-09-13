@@ -1,0 +1,2264 @@
+<!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  金桑的皮卡丘                                                 ║
+  ║  由 不一书个人工作台生成器 (bys-personal-dashboard) 生成       ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  改这个文件时请遵守：                                          ║
+  ║  1. 每个功能必须被分区标记包裹，且 START 和 END 的功能名        ║
+  ║     必须一字不差（HTML 和 JS 两处都要）                        ║
+  ║  2. 数据读写只走 Store.*，不要直接碰 localStorage             ║
+  ║  3. 输入框 font-size 不能小于 16px                            ║
+  ║  4. 数组型数据用 upsert/softDelete，不要用 set 整包覆盖        ║
+  ╚══════════════════════════════════════════════════════════════╝
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>金桑的皮卡丘</title>
+
+<!-- PWA：这四行决定了"添加到主屏幕"之后是不是全屏、图标好不好看 -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="皮卡丘">
+<meta name="theme-color" content="#211C15">
+
+<style>
+/* ==== 主题变量：夜皮卡（默认），另外两套是备选，设置页可切 ==== */
+:root{
+  --bg:#191510;
+  --sidebar:#211C15;
+  --sidebar-text:#B0A48D;
+  --sidebar-active:#F7D02C;
+  --card:#211C15;
+  --text:#F0E9DC;
+  --text-dim:#9C907B;
+  --accent:#F7D02C;
+  --accent-ink:#211C15;
+  --spot:#3A2E22;
+  --radius:18px;
+  --shadow:0 0 0 1px rgba(247,208,44,.08);
+  --font:-apple-system,"PingFang SC",system-ui,sans-serif;
+  --line:#302719;
+
+  /* 字号阶梯 —— 故意拉开跨度。所有字号都差不多，是业余感最大的来源 */
+  --fs-hero:40px;
+  --fs-title:22px;
+  --fs-body:16px;   /* 输入框不得低于 16px，否则 iOS 会自动放大整页 */
+  --fs-meta:13px;
+
+  --pad:18px;
+  --gap:12px;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --dur:.18s;
+}
+
+/* ==== 备选主题：经典黄 / 奶白轻 ==== */
+body.t-light{
+  --bg:#FFF9E6; --sidebar:#3A2E22; --sidebar-text:#EFE6D6; --sidebar-active:#F7D02C;
+  --card:#FFFFFF; --text:#3A2E22; --text-dim:#948570; --accent:#F2C400; --accent-ink:#3A2E22;
+  --spot:#F7D02C; --line:#F0E4B8; --shadow:0 2px 14px rgba(120,100,40,.10); --radius:22px;
+}
+body.t-paper{
+  --bg:#FFFCF4; --sidebar:#FFFDF8; --sidebar-text:#7A6A55; --sidebar-active:#3A2E22;
+  --card:#FFFFFF; --text:#33291F; --text-dim:#9C8E7A; --accent:#F2C400; --accent-ink:#3A2E22;
+  --spot:#FFF1B8; --line:#F1E8D2; --shadow:0 2px 10px rgba(140,120,70,.07); --radius:26px;
+}
+body.t-paper .side{border-right:1px solid var(--line)}
+body.t-light .nav button.on,
+body.t-paper .nav button.on{color:var(--accent-ink)}
+body.t-paper .nav button.on{color:#FFF8E1}
+body.t-light .btn,body.t-paper .btn{color:var(--accent-ink)}
+body.t-light .hero-cell,body.t-paper .hero-cell{color:#3A2E22}
+body.t-light .box,body.t-paper .box{color:var(--accent-ink)}
+
+/* ==== 基础 ==== */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;max-width:100%;overflow-x:hidden}
+body{
+  font-family:var(--font); background:var(--bg); color:var(--text);
+  font-size:var(--fs-body); line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden; /* 整页不滚，只让内容区滚 —— 避免 iOS 橡皮筋把侧边栏拽走 */
+  overflow-wrap:anywhere;
+}
+.app{display:flex;height:100%}
+
+/* ==== 侧边栏：常驻窄条 ==== */
+.side{
+  width:76px;flex-shrink:0;background:var(--sidebar);
+  display:flex;flex-direction:column;
+  padding:calc(12px + env(safe-area-inset-top,0)) 6px calc(12px + env(safe-area-inset-bottom,0));
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.side::-webkit-scrollbar{display:none}
+.brand{text-align:center;margin-bottom:14px;flex-shrink:0}
+.brand .logo{line-height:0}
+.brand .name{
+  font-size:10px;color:var(--sidebar-text);opacity:.85;margin-top:5px;
+  line-height:1.3;letter-spacing:-.3px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav button{
+  border:none;background:transparent;font-family:inherit;cursor:pointer;
+  padding:10px 2px;border-radius:12px;
+  color:var(--sidebar-text);font-size:11px;line-height:1.3;
+}
+.nav button .ico{display:block;font-size:21px;margin-bottom:3px}
+.nav button.on{background:var(--sidebar-active)}
+
+/* ==== 内容区 ==== */
+.main{
+  flex:1;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(14px + env(safe-area-inset-top,0)) 12px calc(28px + env(safe-area-inset-bottom,0));
+  scroll-behavior:smooth;
+}
+.page{display:none;flex-direction:column;gap:var(--gap)}
+.page.on{display:flex}
+.page-title{font-size:var(--fs-title);font-weight:500;line-height:1.25;letter-spacing:-.01em;margin-bottom:2px}
+.page-sub{font-size:var(--fs-meta);color:var(--text-dim);margin-top:-6px;margin-bottom:2px}
+
+/* ==== 卡片 ==== */
+.card{
+  background:var(--card);border-radius:var(--radius);
+  border:1px solid var(--line);   /* 细线代替投影 */
+  box-shadow:var(--shadow);padding:var(--pad);
+  max-width:100%;
+}
+.card h2{font-size:17px;font-weight:500;margin-bottom:12px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.card h2 .sub{font-size:var(--fs-meta);color:var(--text-dim);font-weight:400;margin-left:auto}
+.hint{font-size:var(--fs-meta);color:var(--text-dim);margin-top:8px;line-height:1.6}
+.empty{font-size:var(--fs-meta);color:var(--text-dim);text-align:center;padding:22px 0}
+
+/* 英雄元素 */
+.hero{font-size:var(--fs-hero);font-weight:600;line-height:1.1;letter-spacing:-.01em}
+.num,.hero{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.unit{font-size:var(--fs-meta);color:var(--text-dim);font-weight:400;margin-left:5px}
+.hero-cell{background:var(--spot);border-color:transparent;color:var(--accent)}
+body.t-light .hero-cell,body.t-paper .hero-cell{color:#3A2E22}
+
+/* ==== 表单：字号必须 >=16px ==== */
+input,textarea,select{
+  transition:border-color var(--dur) var(--ease);
+  width:100%;font-size:var(--fs-body);font-family:inherit;color:var(--text);line-height:1.5;
+  padding:11px 13px;border:1px solid rgba(128,128,128,.28);
+  border-radius:calc(var(--radius) - 6px);background:transparent;
+}
+textarea{min-height:88px;resize:vertical;line-height:1.6}
+input::placeholder,textarea::placeholder{color:var(--text-dim)}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+select{appearance:none;-webkit-appearance:none}
+.btn{
+  padding:11px 18px;font-size:15px;font-family:inherit;white-space:nowrap;cursor:pointer;
+  border:none;border-radius:calc(var(--radius) - 6px);
+  background:var(--accent);color:var(--accent-ink);font-weight:600;
+}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid rgba(128,128,128,.3);font-weight:400}
+.btn.danger{background:#d9534f;color:#fff}
+.btn.sm{padding:7px 12px;font-size:13px;font-weight:400}
+.btn:active{opacity:.75}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row .btn{flex-shrink:0}
+.row.top{align-items:flex-start}
+.grow{flex:1;min-width:0}
+
+/* ==== 列表 ==== */
+.item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px dashed rgba(128,128,128,.22)}
+.item:last-child{border-bottom:none}
+.item .grow{line-height:1.6}
+.item .del{color:var(--text-dim);font-size:16px;background:none;border:none;padding:0 4px;flex-shrink:0;cursor:pointer}
+.box{
+  width:21px;height:21px;flex-shrink:0;margin-top:1px;cursor:pointer;
+  border:2px solid var(--accent);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:var(--accent-ink);background:transparent;
+}
+.item.done .box{background:var(--accent)}
+.item.done .grow .txt{text-decoration:line-through;color:var(--text-dim)}
+.tag{
+  display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin:4px 5px 0 0;
+  background:var(--bg);border:1px solid var(--line);color:var(--text-dim);
+}
+.tag.due{background:rgba(232,72,44,.12);border-color:rgba(232,72,44,.4);color:#E8724C}
+.tag.over{background:rgba(232,72,44,.22);border-color:rgba(232,72,44,.6);color:#FF8A66}
+.tag.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);cursor:pointer}
+.tag.pick{cursor:pointer}
+.chips{margin-top:6px}
+.chips .tag{cursor:pointer}
+h3.grp{font-size:var(--fs-meta);color:var(--text-dim);font-weight:500;margin:14px 0 2px}
+h3.grp:first-child{margin-top:0}
+
+/* ==== 提示条 ==== */
+.banner{
+  background:var(--accent);color:var(--accent-ink);padding:11px 14px;
+  border-radius:var(--radius);font-size:13px;line-height:1.5;
+  display:flex;align-items:center;gap:10px;
+}
+.banner button{
+  margin-left:auto;flex-shrink:0;background:rgba(0,0,0,.16);color:inherit;
+  border:none;padding:6px 12px;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer;
+}
+.toast{
+  position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0));
+  transform:translateX(-50%) translateY(8px);z-index:99;max-width:88vw;
+  background:rgba(0,0,0,.88);color:#fff;padding:10px 16px;border-radius:20px;
+  font-size:14px;opacity:0;pointer-events:none;
+  transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease);
+  display:flex;align-items:center;gap:12px;justify-content:center;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+/* 撤销按钮：误点之后全靠它救回来 */
+.toast button#toastAction{
+  display:none;flex-shrink:0;font-family:inherit;font-size:14px;font-weight:600;
+  background:var(--accent);color:var(--accent-ink);border:none;
+  padding:7px 15px;border-radius:14px;cursor:pointer;
+}
+.toast.has-action button#toastAction{display:inline-block}
+.toast.has-action span#toastText{text-align:left}
+
+/* 解析预览行 */
+.prow{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed rgba(128,128,128,.22)}
+.prow:last-of-type{border-bottom:none}
+.prow .txt{line-height:1.5}
+.prow.off{opacity:.42}
+.prow.off .txt{text-decoration:line-through}
+
+/* ==== 动画：只做让状态变化可理解的，不炫技 ==== */
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.page.on > *{animation:rise .26s var(--ease) both}
+.page.on > *:nth-child(1){animation-delay:0s}
+.page.on > *:nth-child(2){animation-delay:.03s}
+.page.on > *:nth-child(3){animation-delay:.06s}
+.page.on > *:nth-child(4){animation-delay:.09s}
+.page.on > *:nth-child(n+5){animation-delay:.12s}
+
+.nav button,.btn,.card,.item .box,.tag.pick{transition:all var(--dur) var(--ease)}
+.btn:active{opacity:.75;transform:scale(.98)}
+.item.done .box{animation:pop .22s var(--ease)}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.18)}100%{transform:scale(1)}}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;
+    transition-duration:.01ms !important;scroll-behavior:auto !important}
+}
+
+/* ════════ 平板：侧栏展开成图标配文字 ════════ */
+@media (min-width:700px){
+  :root{--fs-hero:48px;--fs-title:26px;--pad:24px;--gap:16px}
+  .side{width:200px;padding-left:12px;padding-right:12px}
+  .brand{text-align:left;padding:0 8px;margin-bottom:22px}
+  .brand .logo svg{width:56px;height:56px}
+  .brand .name{font-size:14px;margin-top:6px;word-break:normal}
+  .nav{gap:2px}
+  .nav button{
+    display:flex;align-items:center;gap:12px;text-align:left;
+    padding:12px 14px;font-size:15px;
+  }
+  .nav button .ico{display:inline;font-size:20px;margin:0;width:24px;text-align:center}
+  .main{padding:28px 32px 40px}
+}
+
+/* ════════ 桌面：卡片并排 ════════ */
+@media (min-width:1100px){
+  :root{--fs-hero:56px;--fs-title:30px;--pad:30px;--gap:20px}
+  .side{width:240px}
+  .main{padding:36px 44px 52px}
+  .page.on{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:var(--gap);align-content:start;
+  }
+  .page.on > .page-title,
+  .page.on > .page-sub,
+  .page.on > .banner,
+  .page.on > .card.wide{grid-column:1 / -1}
+}
+@media (min-width:1700px){
+  .main > .page.on{max-width:1400px;margin:0 auto}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ==== 侧边栏 START ==== -->
+  <aside class="side">
+    <div class="brand">
+      <div class="logo" id="brandLogo"></div>
+      <div class="name">金桑的皮卡丘</div>
+    </div>
+    <nav class="nav" id="nav">
+      <!-- 由 App.routes 自动渲染 -->
+    </nav>
+  </aside>
+  <!-- ==== 侧边栏 END ==== -->
+
+  <main class="main" id="main">
+
+    <!-- ==== 功能：随手记 START ==== -->
+    <section class="page" id="page-records">
+      <div class="page-title">随手记</div>
+      <div class="page-sub">微信、企微、邮件里要跟的事，一句话丢进来</div>
+
+      <div class="card">
+        <h2>✍️ 记一条</h2>
+        <div class="row top">
+          <input type="text" id="recInput" class="grow" placeholder="例：报价单今天下班前发王总"
+                 onkeydown="if(event.key==='Enter')Records.add()">
+          <button class="btn" onclick="Records.add()">记下</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <label style="font-size:14px;display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="recIsTodo" checked style="width:auto;padding:0"> 这是个待办
+          </label>
+        </div>
+        <div id="recTagPick" class="chips"></div>
+        <p class="hint">挂个标签，周报月报才能按项目分组。不挂也能记。</p>
+      </div>
+
+      <div class="card wide">
+        <h2>🕒 最近的记录 <span class="sub" id="recCount"></span></h2>
+        <div id="recList"></div>
+      </div>
+    </section>
+    <!-- ==== 功能：随手记 END ==== -->
+
+    <!-- ==== 功能：智能整理 START ==== -->
+    <section class="page" id="page-sort">
+      <div class="page-title">智能整理</div>
+      <div class="page-sub">把聊天记录整段粘进来，它替你挑出要跟的事</div>
+
+      <div class="card">
+        <h2>📥 粘贴区</h2>
+        <textarea id="sortInput" placeholder="把微信 / 企业微信 / 邮件里的那段话整个复制，粘到这里"></textarea>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" onclick="Sorter.run()">识别要跟的事</button>
+          <button class="btn ghost" onclick="Sorter.clear()">清空</button>
+        </div>
+        <p class="hint">
+          只挑「要跟的事」，闲聊和表情不入库。<br>
+          这些原文只留在你手机上，不会进云端、也不会进备份文件。
+        </p>
+      </div>
+
+      <div class="card wide">
+        <h2>🔎 识别结果 <span class="sub" id="sortCount"></span></h2>
+        <div id="sortOut"></div>
+      </div>
+    </section>
+    <!-- ==== 功能：智能整理 END ==== -->
+
+    <!-- ==== 功能：待办清单 START ==== -->
+    <section class="page" id="page-todos">
+      <div class="page-title">待办</div>
+      <div class="page-sub">昨天没做完的会自动滚到今天，不用你手动搬</div>
+
+      <div class="card wide">
+        <div class="row" style="margin-bottom:12px">
+          <button class="btn sm ghost" id="todoFilterBtn" onclick="Todos.toggleDone()">显示已完成的</button>
+          <span class="hint" id="todoStat" style="margin:0 0 0 auto"></span>
+        </div>
+        <div id="todoList"></div>
+      </div>
+    </section>
+    <!-- ==== 功能：待办清单 END ==== -->
+
+    <!-- ==== 功能：今日 START ==== -->
+    <section class="page" id="page-today">
+      <div class="page-title">今日</div>
+      <div class="page-sub" id="todayDate"></div>
+
+      <div class="card hero-cell wide">
+        <div class="hero num" id="todayHero">0</div>
+        <p class="hint" id="todayHeroSub" style="color:inherit;opacity:.8"></p>
+      </div>
+
+      <div class="card wide">
+        <h2>🎯 今天要跟的事</h2>
+        <div id="todayTodos"></div>
+        <div class="row" style="margin-top:16px">
+          <button class="btn" onclick="Today.copy()">📋 复制今日提醒</button>
+          <button class="btn ghost" onclick="App.go('records')">再记一条</button>
+        </div>
+        <p class="hint">
+          复制出来的是一段纯文字，粘到自己的微信文件传输助手，相当于自己给自己发提醒。
+        </p>
+      </div>
+
+      <div class="card wide">
+        <h2>📥 今天新进的事</h2>
+        <div id="todayIn"></div>
+      </div>
+
+      <div class="card wide">
+        <h2>✅ 今天完成的</h2>
+        <div id="todayDone"></div>
+      </div>
+    </section>
+    <!-- ==== 功能：今日 END ==== -->
+
+    <!-- ==== 功能：每日复盘 START ==== -->
+    <section class="page" id="page-review">
+      <div class="page-title">今日复盘</div>
+      <div class="page-sub">两分钟，今天的流水就在下面照着写</div>
+
+      <div class="card">
+        <h2>🌙 三句话</h2>
+        <label class="hint" style="margin:0 0 6px;display:block">今天最重要的三件事</label>
+        <textarea id="rvTop" placeholder="1. &#10;2. &#10;3. "></textarea>
+        <label class="hint" style="margin:14px 0 6px;display:block">卡在哪了</label>
+        <textarea id="rvBlock" placeholder="谁在等我的东西？什么没推动？"></textarea>
+        <label class="hint" style="margin:14px 0 6px;display:block">明天第一件事做什么</label>
+        <input type="text" id="rvNext" placeholder="明早一坐下先干这个">
+        <div class="row" style="margin-top:14px">
+          <button class="btn" onclick="Review.save()">保存</button>
+          <button class="btn ghost" onclick="App.go('history')">看以前的复盘</button>
+        </div>
+      </div>
+
+      <div class="card wide">
+        <h2>📋 今天记下的东西</h2>
+        <div id="rvContext"></div>
+      </div>
+    </section>
+    <!-- ==== 功能：每日复盘 END ==== -->
+
+    <!-- ==== 功能：项目标签 START ==== -->
+    <section class="page" id="page-tags">
+      <div class="page-title">标签</div>
+      <div class="page-sub">按项目或客户分组，周报月报全靠它</div>
+
+      <div class="card">
+        <h2>🏷️ 加一个</h2>
+        <div class="row top">
+          <input type="text" id="tagInput" class="grow" placeholder="例：XX项目 / 王总 / 行政杂事"
+                 onkeydown="if(event.key==='Enter')Tags.add()">
+          <button class="btn" onclick="Tags.add()">加上</button>
+        </div>
+        <p class="hint">建议 3-8 个就够。太多反而不好归类，周报也会碎。</p>
+      </div>
+
+      <div class="card wide">
+        <h2>已有的标签</h2>
+        <div id="tagList"></div>
+      </div>
+    </section>
+    <!-- ==== 功能：项目标签 END ==== -->
+
+    <!-- ==== 功能：周报 START ==== -->
+    <section class="page" id="page-week">
+      <div class="page-title">周报</div>
+      <div class="page-sub" id="weekRange"></div>
+
+      <div class="card hero-cell wide">
+        <div class="hero num" id="weekDone">0</div>
+        <p class="hint" id="weekSub" style="color:inherit;opacity:.8"></p>
+      </div>
+
+      <div class="card wide">
+        <h2>📊 本周汇报 <span class="sub" id="weekNav"></span></h2>
+        <div class="row" style="margin-bottom:14px">
+          <button class="btn sm ghost" onclick="Reports.shiftWeek(-1)">← 上一周</button>
+          <button class="btn sm ghost" onclick="Reports.shiftWeek(1)">下一周 →</button>
+          <button class="btn sm ghost" onclick="Reports.weekNow()">回到本周</button>
+        </div>
+        <div id="weekBody"></div>
+        <div class="row" style="margin-top:18px">
+          <button class="btn" onclick="Reports.copyWeek()">📋 复制周报</button>
+        </div>
+        <p class="hint">复制出来就能直接粘到群里或周报文档里，不用再排版。</p>
+      </div>
+    </section>
+    <!-- ==== 功能：周报 END ==== -->
+
+    <!-- ==== 功能：月报 START ==== -->
+    <section class="page" id="page-month">
+      <div class="page-title">月报</div>
+      <div class="page-sub" id="monthRange"></div>
+
+      <div class="card hero-cell wide">
+        <div class="hero num" id="monthDone">0</div>
+        <p class="hint" id="monthSub" style="color:inherit;opacity:.8"></p>
+      </div>
+
+      <div class="card wide">
+        <h2>📆 本月汇报 <span class="sub" id="monthNav"></span></h2>
+        <div class="row" style="margin-bottom:14px">
+          <button class="btn sm ghost" onclick="Month.shift(-1)">← 上一月</button>
+          <button class="btn sm ghost" onclick="Month.shift(1)">下一月 →</button>
+          <button class="btn sm ghost" onclick="Month.now()">回到本月</button>
+        </div>
+        <div id="monthBody"></div>
+        <div class="row" style="margin-top:18px">
+          <button class="btn" onclick="Month.copy()">📋 复制月报</button>
+        </div>
+        <p class="hint">月报比周报更看「做完的量」和「按项目分布」，细节可以少一些。</p>
+      </div>
+    </section>
+    <!-- ==== 功能：月报 END ==== -->
+
+    <!-- ==== 功能：历史检索 START ==== -->
+    <section class="page" id="page-search">
+      <div class="page-title">检索</div>
+      <div class="page-sub">三个月后想翻出某件事，来这里搜</div>
+
+      <div class="card">
+        <h2>🔎 搜什么</h2>
+        <div class="row top">
+          <input type="text" id="searchInput" class="grow" placeholder="关键词，比如「报价」或「王总」"
+                 onkeydown="if(event.key==='Enter')Search.run()">
+          <button class="btn" onclick="Search.run()">搜</button>
+        </div>
+        <div id="searchQuick" class="chips"></div>
+      </div>
+
+      <div class="card wide">
+        <h2>搜索结果 <span class="sub" id="searchCount"></span></h2>
+        <div id="searchOut"><div class="empty">输入关键词开始搜</div></div>
+      </div>
+    </section>
+    <!-- ==== 功能：历史检索 END ==== -->
+
+    <!-- ==== 功能：设置 START ==== -->
+    <section class="page" id="page-settings">
+      <div class="page-title">设置</div>
+
+      <div class="card">
+        <h2>🎨 头像</h2>
+        <div class="row">
+          <div id="avatarBox"></div>
+          <div class="grow">
+            <p class="hint" style="margin:0 0 10px">
+              默认是那只皮卡丘。你在网上看到更好看的图，传一张就换掉。<br>
+              你传的图只存在自己手机里，不会进上传的文件，别人打开你的链接看不到。
+            </p>
+            <div class="row">
+              <button class="btn ghost" onclick="document.getElementById('avatarFile').click()">上传新头像</button>
+              <button class="btn ghost" onclick="Settings.resetAvatar()">用回默认</button>
+            </div>
+            <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="Settings.uploadAvatar(this)">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🎨 配色</h2>
+        <div class="row">
+          <button class="btn sm" onclick="Settings.setTheme('t-night')">夜皮卡</button>
+          <button class="btn sm ghost" onclick="Settings.setTheme('t-light')">经典黄</button>
+          <button class="btn sm ghost" onclick="Settings.setTheme('t-paper')">奶白轻</button>
+        </div>
+        <p class="hint">换配色不会动你的任何数据，随时能换回来。</p>
+      </div>
+
+      <div class="card">
+        <h2>💾 数据备份</h2>
+        <p class="hint" style="margin-top:0;margin-bottom:12px">
+          你的所有数据都存在这台设备的浏览器里，不在任何服务器上。<br>
+          换手机、清理浏览器数据前，记得先导出备份。<br>
+          备份文件可以丢到百度云存一份。
+        </p>
+        <div class="row">
+          <button class="btn" onclick="Store.exportFile()">导出备份</button>
+          <button class="btn ghost" onclick="document.getElementById('importFile').click()">恢复备份</button>
+        </div>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="Store.importFile(this)">
+        <p class="hint" id="backupInfo"></p>
+      </div>
+
+      <!-- ==== 双端同步卡片 START ==== -->
+      <div class="card wide" id="syncCard">
+        <h2>🔄 双端同步 <span class="hint" id="syncState" style="margin:0 0 0 auto;font-size:var(--fs-meta)"></span></h2>
+        <div id="syncOff">
+          <p class="hint" style="margin-top:0">
+            开启后手机和电脑登同一个账号，记的东西自动对齐。<br>
+            <b>数据会在你的设备和云端各存一份</b>，本地那份始终在，断网照样能记。<br>
+            云端那份是明文的——只有知道你密码的人能读，但平台运维理论上能看到。<br>
+            <b>密码忘了就进不去了，没有找回功能。</b>
+          </p>
+          <div style="margin-top:14px">
+            <input type="text" id="syncUser" placeholder="用户名（3-32 个字符，只用来定位你的数据）" autocomplete="username">
+          </div>
+          <div style="margin-top:10px">
+            <input type="password" id="syncPass" placeholder="密码（至少 8 位）" autocomplete="new-password">
+          </div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" onclick="Settings.enableSync()">开启同步</button>
+            <button class="btn ghost" onclick="Store.exportFile()">先导出备份</button>
+          </div>
+          <p class="hint">建议先导出一份备份再开——万一以后忘了密码，本地这份还在。</p>
+        </div>
+        <div id="syncOn" style="display:none">
+          <p class="hint" style="margin-top:0">账号：<b id="syncWho" class="mono"></b><br>上次同步：<span id="syncTime"></span></p>
+          <div class="row" style="margin-top:14px">
+            <button class="btn" onclick="Sync.pull(true)">立即同步</button>
+            <button class="btn ghost" onclick="Settings.changePass()">改密码</button>
+            <button class="btn ghost" onclick="Sync.disable()">关闭同步</button>
+          </div>
+          <p class="hint">
+            刚在另一台设备改的东西，这边点一下「立即同步」就能看到。
+            工作台只在你打开、切回前台、或手动点的时候才去云端拉，不会在后台反复请求。
+          </p>
+        </div>
+      </div>
+      <!-- ==== 双端同步卡片 END ==== -->
+
+      <div class="card">
+        <h2>📱 加到手机桌面</h2>
+        <p class="hint" style="margin-top:0">
+          <b>iPhone</b>：用 Safari 打开 → 点底部「分享」→「添加到主屏幕」<br>
+          <b>安卓</b>：用 Chrome 打开 → 右上角「⋮」→「添加到主屏幕」<br>
+          微信里打开的不行，一定要先跳到系统浏览器。
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>⚠️ 危险操作</h2>
+        <button class="btn danger" onclick="Store.wipe()">清空所有数据</button>
+        <p class="hint">清空前请确认已经导出过备份，这个操作无法撤销。</p>
+      </div>
+
+      <div class="card">
+        <p class="hint" style="margin:0;text-align:center">
+          金桑的皮卡丘<br>
+          <span style="opacity:.6">由 不一书个人工作台生成器 生成</span>
+        </p>
+      </div>
+    </section>
+    <!-- ==== 功能：设置 END ==== -->
+
+  </main>
+</div>
+
+<div class="toast" id="toast">
+  <span id="toastText"></span>
+  <button id="toastAction" type="button"></button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   Store · 存储抽象层
+   所有数据读写都必须走这里，不要直接用 localStorage。
+
+   ── 为什么数组型数据要用 list/upsert 而不是 get/set ──
+   Store.set('records', 整个数组) 是「整本一起覆盖」。单设备没问题，
+   一旦两台设备各自离线改过，后上传的那份会把另一份的改动无声吞掉。
+
+   所以数组型一律用 upsert / softDelete，每条带修改时间，合并时逐条比对。
+   ═══════════════════════════════════════════════════════════ */
+const Store = (() => {
+  const NS  = 'bysdash:';
+  const SEC = 'bysdash$secret:';
+  const LOCAL = 'local$';        // 只留本机：不同步、不进备份（粘贴的聊天原文）
+  const TOMB_TTL = 30 * 864e5;
+  const isLocal = k => k.indexOf(LOCAL) === 0;
+  /* 框架自己用的键：不同步、不进备份。
+     这里必须**逐个列出**，不能写成「下划线开头一律排除」——
+     那是按名字猜语义，哪天用户的某个数据键刚好以 _ 开头，就会被静默丢掉。 */
+  const INTERNAL = ['_lastWrite', '_lastBackup', '_lastPage', '_migrated', '_sync', '_syncAt'];
+  const isInternal = k => INTERNAL.indexOf(k) > -1;
+
+  const driver = {
+    get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set(k,v){
+      try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+      catch(e){
+        UI.toast('存储空间满了，请到设置里导出备份后清理旧数据');
+        console.error(e); return false;
+      }
+    },
+    remove(k){ localStorage.removeItem(k); },
+    keys(){ return Object.keys(localStorage); }
+  };
+
+  const now = () => Date.now();
+
+  /** 按 id 逐条合并两个列表：同 id 取修改时间更新的那条 */
+  function mergeList(a, b){
+    const m = new Map();
+    for (const it of [...(a || []), ...(b || [])]) {
+      if (!it || !it.id) continue;
+      const prev = m.get(it.id);
+      if (!prev || (it._u || 0) > (prev._u || 0)) m.set(it.id, it);
+    }
+    return [...m.values()];
+  }
+
+  const S = {
+    get(key, fallback = null){
+      const v = driver.get(NS + key);
+      return v === null || v === undefined ? fallback : v;
+    },
+    set(key, val){
+      const ok = driver.set(NS + key, val);
+      if (ok) this._touch();
+      return ok;
+    },
+    remove(key){ driver.remove(NS + key); this._touch(); },
+
+    /* ── 数组型：一条一条存，可合并 ── */
+    list(key, sort){
+      const raw = this.get(key, []);
+      if (!Array.isArray(raw)) return [];
+      const cut = now() - TOMB_TTL;
+      const alive = [], keep = [];
+      for (const it of raw) {
+        if (it && it._d) { if ((it._u || 0) > cut) keep.push(it); continue; }
+        if (it) { alive.push(it); keep.push(it); }
+      }
+      if (keep.length !== raw.length) driver.set(NS + key, keep);
+      return sort ? alive.sort(sort) : alive;
+    },
+
+    upsert(key, item){
+      const raw = this.get(key, []);
+      const it = Object.assign({}, item);
+      if (!it.id) it.id = Util.uid();
+      it._u = now();
+      delete it._d;
+      const i = raw.findIndex(x => x && x.id === it.id);
+      if (i >= 0) raw[i] = Object.assign({}, raw[i], it); else raw.push(it);
+      this.set(key, raw);
+      return it;
+    },
+
+    softDelete(key, id){
+      const raw = this.get(key, []);
+      const i = raw.findIndex(x => x && x.id === id);
+      if (i >= 0) raw[i] = { id, _d: 1, _u: now() };
+      else raw.push({ id, _d: 1, _u: now() });
+      this.set(key, raw);
+    },
+
+    incr(key, n = 1){
+      const raw = this.get(key, []);
+      for (let i = 0; i < n; i++) raw.push({ id: Util.uid(), _u: now() });
+      this.set(key, raw);
+      return this.count(key);
+    },
+    decr(key){
+      const alive = this.list(key);
+      if (alive.length) this.softDelete(key, alive[alive.length - 1].id);
+      return this.count(key);
+    },
+    count(key){ return this.list(key).length; },
+
+    /* ── 按天 ── */
+    getDaily(key, fallback = null){ return this.get(key + ':' + Util.today(), fallback); },
+    setDaily(key, val){ return this.set(key + ':' + Util.today(), val); },
+    listDaily(key, sort){ return this.list(key + ':' + Util.today(), sort); },
+    upsertDaily(key, item){ return this.upsert(key + ':' + Util.today(), item); },
+    incrDaily(key, n = 1){ return this.incr(key + ':' + Util.today(), n); },
+    decrDaily(key){ return this.decr(key + ':' + Util.today()); },
+    countDaily(key){ return this.count(key + ':' + Util.today()); },
+
+    /* ── 敏感数据：不进备份 ── */
+    getSecret(key){ return driver.get(SEC + key); },
+    setSecret(key, val){ return driver.set(SEC + key, val); },
+
+    /* ── 旧版数据迁移 ── */
+    _stableId(o){
+      const s = JSON.stringify(Object.keys(o).sort().map(k => [k, o[k]]));
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+      return 'm' + (h >>> 0).toString(36);
+    },
+
+    migrate(){
+      if (this.get('_migrated')) return 0;
+      let n = 0;
+      driver.keys().filter(k => k.startsWith(NS)).forEach(k => {
+        const v = driver.get(k);
+        if (!Array.isArray(v) || !v.length) return;
+        let touched = false;
+        const fixed = v.map(it => {
+          if (!it || typeof it !== 'object') return it;
+          const o = Object.assign({}, it);
+          if (!o.id) { o.id = this._stableId(it); touched = true; }
+          if (!o._u) { o._u = 1; touched = true; }
+          return o;
+        });
+        if (touched) { driver.set(k, fixed); n++; }
+      });
+      this.set('_migrated', Date.now());
+      if (n) console.info(`[迁移] 已为 ${n} 组历史数据补齐标识，一条没少`);
+      return n;
+    },
+
+    /* ── 只留本机的数据：粘贴的聊天原文这类，不参与同步也不进备份 ──
+       用 local$ 前缀而不是下划线：下划线开头的键里混着业务数据，
+       一刀切会把用户的记录也从备份里排掉（这个坑踩过一次）。 */
+    getLocal(key, fallback = null){ return this.get(LOCAL + key, fallback); },
+    setLocal(key, val){ return this.set(LOCAL + key, val); },
+
+    /* ── 供云同步用 ── */
+    _touch(){
+      driver.set(NS + '_lastWrite', now());
+      if (typeof Sync !== 'undefined' && Sync.on && Sync.on()) Sync.schedule();
+    },
+    mergeList,
+    mergeRemote(remote){
+      if (!remote || typeof remote !== 'object') return 0;
+      let changed = 0;
+      for (const [key, rv] of Object.entries(remote)) {
+        if (isLocal(key) || isInternal(key)) continue;
+        const lv = this.get(key, null);
+        if (Array.isArray(rv)) {
+          const merged = mergeList(Array.isArray(lv) ? lv : [], rv);
+          if (JSON.stringify(merged) !== JSON.stringify(lv)) { driver.set(NS + key, merged); changed++; }
+        } else if (lv === null || lv === undefined) {
+          driver.set(NS + key, rv); changed++;
+        }
+      }
+      return changed;
+    },
+    /** 导出给云端或备份用的整包（不含 secret，也不含 local$ 的原文缓存） */
+    dump(){
+      const data = {};
+      driver.keys().filter(k => k.startsWith(NS)).forEach(k => {
+        const short = k.slice(NS.length);
+        if (isLocal(short) || isInternal(short)) return;
+        data[short] = driver.get(k);
+      });
+      return data;
+    },
+
+    /* ── 备份 ── */
+    exportAll(){
+      return { app:'金桑的皮卡丘', version:1, exportedAt:new Date().toISOString(), data:this.dump() };
+    },
+
+    exportFile(){
+      const blob = new Blob([JSON.stringify(this.exportAll(), null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '皮卡丘备份-' + Util.today() + '.json';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      this.set('_lastBackup', now());
+      UI.toast('已导出，建议转发到微信文件传输助手存一份');
+      Settings.refreshBackupInfo();
+    },
+
+    importFile(input){
+      const f = input.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = e => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.data) throw new Error('格式不对');
+          if (!confirm('恢复备份会与当前数据合并，确定吗？')) return;
+          const n = this.mergeRemote(parsed.data);
+          Object.entries(parsed.data).forEach(([k,v]) => {
+            if (!Array.isArray(v) && this.get(k, null) === null) driver.set(NS + k, v);
+          });
+          UI.toast('已合并 ' + n + ' 项，正在重新加载');
+          setTimeout(() => location.reload(), 900);
+        } catch(err){ UI.toast('文件读不了，可能不是备份文件'); }
+      };
+      r.readAsText(f);
+      input.value = '';
+    },
+
+    wipe(){
+      if (!confirm('确定清空所有数据？这个操作无法撤销。')) return;
+      if (!confirm('再确认一次：真的要清空吗？')) return;
+      driver.keys().filter(k => k.startsWith(NS)).forEach(k => driver.remove(k));
+      location.reload();
+    }
+  };
+  return S;
+})();
+
+
+/* ═══════════════════════════════════════════════════════════
+   Util · 工具
+   ═══════════════════════════════════════════════════════════ */
+const Util = {
+  today(){
+    const d = new Date();
+    return this.dateOf(d);
+  },
+  uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); },
+  dateOf(d){
+    return d.getFullYear() + '-' +
+           String(d.getMonth()+1).padStart(2,'0') + '-' +
+           String(d.getDate()).padStart(2,'0');
+  },
+  /** '2026-02-20' → Date（本地零点，避免 UTC 偏移把日期算错一天） */
+  parseDate(s){
+    const p = String(s || '').split('-').map(Number);
+    return new Date(p[0] || 1970, (p[1] || 1) - 1, p[2] || 1);
+  },
+  addDays(dateStr, n){
+    const d = this.parseDate(dateStr);
+    d.setDate(d.getDate() + n);
+    return this.dateOf(d);
+  },
+  /** 本周一 */
+  mondayOf(dateStr){
+    const d = this.parseDate(dateStr || this.today());
+    const dow = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - dow);
+    return this.dateOf(d);
+  },
+  monthOf(dateStr){
+    return String(dateStr || this.today()).slice(0, 7);
+  },
+  /** 中文短日期：3月5日 周四 */
+  cnDate(dateStr){
+    const d = this.parseDate(dateStr);
+    const w = '日一二三四五六'[d.getDay()];
+    return (d.getMonth()+1) + '月' + d.getDate() + '日 周' + w;
+  },
+  /** 相对日期：今天 / 明天 / 逾期 2 天 */
+  relDate(dateStr){
+    if (!dateStr) return '';
+    const t = this.today();
+    const diff = Math.round((this.parseDate(dateStr) - this.parseDate(t)) / 864e5);
+    if (diff === 0) return '今天';
+    if (diff === 1) return '明天';
+    if (diff === 2) return '后天';
+    if (diff === -1) return '昨天';
+    if (diff < 0) return '逾期 ' + Math.abs(diff) + ' 天';
+    if (diff <= 7) return diff + ' 天后';
+    return this.cnDate(dateStr);
+  },
+  esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); },
+
+  /** 复制到剪贴板：iOS 上 clipboard 常不可用，退回 textarea + execCommand */
+  copy(text){
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch(e){ ok = false; }
+      document.body.removeChild(ta);
+      if (ok) UI.toast('已复制，去粘到需要的地方吧');
+      else { alert('这个浏览器不让自动复制，你手动全选下面这段：\n\n' + text); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => UI.toast('已复制，去粘到需要的地方吧'), fallback);
+    } else fallback();
+  },
+
+  compressImage(file, maxW = 800, quality = .72){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const cv = document.createElement('canvas');
+        cv.width  = Math.round(img.width  * scale);
+        cv.height = Math.round(img.height * scale);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        resolve(cv.toDataURL('image/jpeg', quality));
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+};
+
+
+/* ═══════════════════════════════════════════════════════════
+   默认头像 · 皮卡丘
+   矢量画的，缩到指甲盖大小也认得出。
+   用户可以在设置页上传自己的图覆盖它（只存在本机，不进部署文件）。
+   ═══════════════════════════════════════════════════════════ */
+const PikaSvg = (size = 46) => `
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100" style="display:block;margin:0 auto">
+  <rect width="100" height="100" rx="24" fill="#3A2E22"/>
+  <circle cx="50" cy="50" r="34" fill="#F7D02C"/>
+  <circle cx="24" cy="62" r="8" fill="#E8482C"/>
+  <circle cx="76" cy="62" r="8" fill="#E8482C"/>
+  <path d="M56,20 L34,56 L48,56 L42,80 L66,44 L52,44 Z" fill="#3A2E22"/>
+</svg>`;
+
+/** 侧边栏头像：用户传过图就用图，否则用皮卡丘 */
+function avatarHtml(size){
+  const custom = Store.get('_avatar', '');
+  if (custom) {
+    return `<img src="${Util.esc(custom)}" alt="头像" width="${size}" height="${size}"
+      style="display:block;margin:0 auto;border-radius:24%;object-fit:cover">`;
+  }
+  return PikaSvg(size);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   UI · 界面工具
+   ═══════════════════════════════════════════════════════════ */
+const UI = {
+  toast(msg){
+    const t = document.getElementById('toast');
+    document.getElementById('toastText').textContent = msg;
+    document.getElementById('toastAction').textContent = '';
+    t.classList.remove('has-action');
+    t.classList.add('on');
+    clearTimeout(this._t);
+    this._t = setTimeout(() => t.classList.remove('on'), 2400);
+  },
+  /** 带「撤销」按钮的提示。
+      勾掉待办是最高频的动作，也是最容易误点的 —— 所以必须有一条后悔路，
+      而且要在手还停在屏幕上的那几秒里给出来，不能藏进二级菜单。 */
+  toastUndo(msg, actionLabel, onUndo){
+    const t = document.getElementById('toast');
+    document.getElementById('toastText').textContent = msg;
+    const btn = document.getElementById('toastAction');
+    btn.textContent = actionLabel;
+    t.classList.add('has-action');
+    t.classList.add('on');
+    clearTimeout(this._t);
+    const close = () => { t.classList.remove('on'); };
+    btn.onclick = () => {
+      clearTimeout(this._t);
+      close();
+      try { onUndo(); } catch(e){ console.error(e); }
+    };
+    this._t = setTimeout(close, 6000);   // 给足 6 秒
+  },
+  banner(html, pageId = null){
+    const box = document.createElement('div');
+    box.className = 'banner';
+    box.innerHTML = html;
+    const target = pageId ? document.getElementById(pageId) : document.querySelector('.page.on');
+    target?.prepend(box);
+    return box;
+  },
+  /** 通用列表渲染，省得每个功能都写一遍空状态 */
+  rows(list, render, emptyText){
+    if (!list || !list.length) return `<div class="empty">${emptyText || '还没有内容'}</div>`;
+    return list.map(render).join('');
+  }
+};
+
+
+/* ═══════════════════════════════════════════════════════════
+   数据 · Data
+   records 是所有事情的唯一真相来源：
+     { id, t:'YYYY-MM-DD', text, isTodo, done, doneAt, due, tags:[], src, _u }
+   ═══════════════════════════════════════════════════════════ */
+const Data = {
+  all(){ return Store.list('records'); },
+
+  /** 按日期倒序，同一天按记下的时间倒序 */
+  sorted(){
+    return this.all().sort((a,b) => a.t === b.t ? (b._u || 0) - (a._u || 0) : (a.t < b.t ? 1 : -1));
+  },
+
+  /** 区间内的记录（含首尾） */
+  between(from, to){
+    return this.sorted().filter(r => r.t >= from && r.t <= to);
+  },
+
+  /** date 这天新记的 */
+  on(date){ return this.sorted().filter(r => r.t === date); },
+
+  /** 还没做完的待办（不限日期），按截止日排序 */
+  openTodos(){
+    return this.all()
+      .filter(r => r.isTodo && !r.done)
+      .sort((a,b) => {
+        const da = a.due || '9999-99-99', db = b.due || '9999-99-99';
+        if (da !== db) return da < db ? -1 : 1;
+        return (a.t || '') < (b.t || '') ? -1 : 1;
+      });
+  },
+
+  /** 逾期 + 今天到期（今日页和提醒用） */
+  urgent(){
+    const t = Util.today();
+    return this.openTodos().filter(r => r.due && r.due <= t);
+  },
+
+  doneOn(date){
+    return this.sorted().filter(r => r.done && r.doneAt && r.doneAt.slice(0,10) === date);
+  },
+
+  add(o){
+    const rec = Object.assign({
+      id: Util.uid(), t: Util.today(), text: '', isTodo: false, done: false,
+      doneAt: '', due: '', tags: [], src: '',
+    }, o);
+    Store.upsert('records', rec);
+    return rec;
+  },
+
+  toggleDone(id){
+    const r = this.all().find(x => x.id === id);
+    if (!r) return;
+    const done = !r.done;
+    Store.upsert('records', { id, done, doneAt: done ? new Date().toISOString() : '' });
+    return done;
+  },
+
+  remove(id){ Store.softDelete('records', id); },
+
+  /** 某条记录的标签名 */
+  tagNames(r){ return (r && r.tags) || []; },
+
+  /** 全部用过的标签名（含没在标签页登记的），按出现次数降序 */
+  usedTags(){
+    const n = {};
+    this.all().forEach(r => (r.tags || []).forEach(t => { n[t] = (n[t] || 0) + 1; }));
+    return Object.keys(n).sort((a,b) => n[b] - n[a]);
+  },
+
+  /** 标签页里登记的标签（带颜色无关的元数据） */
+  tags(){ return Store.list('tags').sort((a,b) => (a.name || '') < (b.name || '') ? -1 : 1); },
+
+  addTag(name){
+    name = (name || '').trim();
+    if (!name) return null;
+    const exist = this.tags().find(t => t.name === name);
+    if (exist) return exist;
+    return Store.upsert('tags', { id: Util.uid(), name });
+  },
+
+  removeTag(id){ Store.softDelete('tags', id); },
+
+  /** 给记录改标签 */
+  setTags(id, tags){
+    Store.upsert('records', { id, tags });
+  },
+
+  /** 今日提醒那段纯文字 */
+  reminderText(){
+    const t = Util.today();
+    const open = this.openTodos();
+    const overdue = open.filter(r => r.due && r.due < t);
+    const today = open.filter(r => r.due === t);
+    const soon = open.filter(r => r.due && r.due > t).slice(0, 5);
+    const none = open.filter(r => !r.due);
+
+    const L = [];
+    L.push('【' + Util.cnDate(t) + ' 要跟的事】');
+    if (overdue.length) {
+      L.push('');
+      L.push('⚠️ 已经逾期 ' + overdue.length + ' 件：');
+      overdue.forEach(r => L.push('· ' + r.text + '（原定 ' + r.due + '）'));
+    }
+    if (today.length) {
+      L.push('');
+      L.push('今天到期：');
+      today.forEach(r => L.push('□ ' + r.text));
+    }
+    if (soon.length) {
+      L.push('');
+      L.push('接下来：');
+      soon.forEach(r => L.push('· ' + r.text + '（' + Util.relDate(r.due) + '）'));
+    }
+    if (none.length) {
+      L.push('');
+      L.push('没定时间的（' + none.length + ' 件）：');
+      none.slice(0, 6).forEach(r => L.push('· ' + r.text));
+      if (none.length > 6) L.push('· …还有 ' + (none.length - 6) + ' 件');
+    }
+    if (open.length === 0) L.push('（清空了，今天没有要跟的事）');
+    const doneToday = this.doneOn(t).length;
+    if (doneToday) { L.push(''); L.push('今天已完成 ' + doneToday + ' 件。'); }
+    return L.join('\n');
+  }
+};
+
+
+/* ═══════════════════════════════════════════════════════════
+   Parser · 智能整理的核心
+   纯函数，不碰 DOM 也不碰存储 —— 这样能单独跑测试。
+
+   它做四件事：拆条 → 挑出要跟的事 → 认截止时间 → 认来源
+   ═══════════════════════════════════════════════════════════ */
+const Parser = {
+  /* 有这些词，多半是「要我做事」 */
+  ACTION: /(麻烦|需要|请你|请帮|请安|请确|请回|请提|请尽|请于|尽快|跟进|落实|对接|确认一?下|确认下|回复一?下|回复下|提交|交一下|交给我|发我|发一下|发一份|发个|催一?下|记得|别忘|安排|处理一?下|处理下|反馈|同步一?下|同步下|出个|出一下|准备一?下|准备下|搞定|抓紧|务必|一定要|请务必|抽空|帮忙|看一下|看下|跟一?下|跟下|什么时候|能不能|可否|请给|点个|签个字|盖章|^please\b|^kindly\b|\bplease\b|\bcan you\b|\bcould you\b|\bneed you\b|\byou need\b|\bdon'?t forget\b|\bremember to\b|\bsend me\b|\bsubmit\b|\bconfirm\b|\breply\b|\bfeedback\b|\bby (mon|tue|wed|thu|fri|sat|sun)|\bdeadline\b|\basap\b)/i,
+
+  /* 这些明显不是待办 */
+  NOISE: /^(好的?|收到|嗯+|哦+|行|OK|ok|Ok|好嘞|谢谢|感谢|辛苦|哈哈+|嘻嘻|早安|晚安|在吗|没事|没关系|不客气|thanks|thank you|sure|got it|\[.*\]|【.*】?$|表情|图片|\[图片\]|\[表情\]|\[链接\]|\[文件\])/i,
+
+  /* 邮件 / 转发的结构性行，不是内容 */
+  META: /^(发件人|收件人|抄送|密送|主题|正文|附件|From|To|Cc|Subject|Date|Sent|时间|地点|时间|参会|会议时间|会议室)[:：]/i,
+
+  /* 引用 / 转发的老内容，不该混进来 */
+  QUOTE: /(^>|写道：|写道:|在.*写道|以下是转发|—— ?原始邮件|-{3,}原始邮件|^发自我的|^Sent from|^(在|On) .{4,40}(写道|wrote))/,
+
+  /* 回复 / 转发前缀 */
+  REFWD: /^(re|fwd?|回复|答复|转发|转)\s*[:：]\s*/i,
+
+  /* 纯邮件主题行（"Re: XXX" 后面没别的内容）——那是主题，不是要说的事 */
+  SUBJECTONLY: /^(re|fwd?|回复|答复|转发|转)\s*[:：]\s*[\u4e00-\u9fa5A-Za-z0-9_\-\s]{0,20}$/i,
+
+  /* 英文日期词 */
+  EN_DUE: /(today|tomorrow|this week|next week|by (mon|tue|wed|thu|fri|sat|sun)(day)?|end of (this )?month)/i,
+
+  /* 时间戳行：10:32 / 2026-02-20 10:32 / 上午10:32 */
+  TIMEONLY: /^[\[\(【]?\s*(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}日?\s*)?(上午|下午|晚上|中午|凌晨)?\s*\d{1,2}[:：]\d{2}\s*(:\d{2})?\s*[\]\)】]?$/,
+
+  /* 群名 / 频道行：只有【xxx】或 #xxx 且很短 */
+  GROUPONLY: /^([\[【(（][^\]】)）]{1,14}[\]】)）]\s*#{0,1})$/,
+
+  /* 纯人名（带不带时间戳都算）——这是"谁说的"这层壳，不是内容，不该单独成条 */
+  NAMEONLY: /^[\[【(（]?[\u4e00-\u9fa5A-Za-z0-9_·．\.\- ]{1,14}[\]】)）]?(\s*\d{1,2}[:：]\d{2})?$/,
+
+  /* 整行就是个"要做什么"的祈使句，不带"你/请"也认 */
+  BARE_ACTION: /^(尽快|抓紧|务必|一定|别忘了?|记得)?\s*(把|将|帮)?[\u4e00-\u9fa5A-Za-z0-9]{2,20}(一下|一份|个|下|给我|过来|过去|上来)$/,
+
+  /** 从一行里认出截止日期，返回 'YYYY-MM-DD' 或 '' */
+  detectDue(line, base){
+    base = base || Util.today();
+    const y = Util.parseDate(base).getFullYear();
+    const m = (re) => line.match(re);
+    let g;
+    if ((g = m(/(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})/))) {
+      return g[1] + '-' + String(g[2]).padStart(2,'0') + '-' + String(g[3]).padStart(2,'0');
+    }
+    if ((g = m(/(\d{1,2})[-/月](\d{1,2})[日号]?/))) {
+      return y + '-' + String(g[1]).padStart(2,'0') + '-' + String(g[2]).padStart(2,'0');
+    }
+    if ((g = m(/下周([一二三四五六日天])/))) {
+      const off = { 一:0, 二:1, 三:2, 四:3, 五:4, 六:5, 日:6, 天:6 }[g[1]];
+      return Util.addDays(Util.mondayOf(base), 7 + off);
+    }
+    if (/下周/.test(line)) return Util.addDays(Util.mondayOf(base), 7);
+    if ((g = m(/周([一二三四五六日天])/))) {
+      const off = { 一:0, 二:1, 三:2, 四:3, 五:4, 六:5, 日:6, 天:6 }[g[1]];
+      const d = Util.addDays(Util.mondayOf(base), off);
+      return d < base ? Util.addDays(d, 7) : d;
+    }
+    if (/本周末|这周末|本周内|这周内|本星期内|这个星期内/.test(line)) {
+      return Util.addDays(Util.mondayOf(base), 6);
+    }
+    if (/本月底|这个月底|月底前/.test(line)) {
+      const d = Util.parseDate(base);
+      return Util.dateOf(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+    }
+    if (/明天|明日/.test(line)) return Util.addDays(base, 1);
+    if (/后天/.test(line)) return Util.addDays(base, 2);
+    if (/今天|今日|下班前|今儿|上午|下午/.test(line)) return base;
+    /* 英文的日期词 */
+    if (/\btomorrow\b/i.test(line)) return Util.addDays(base, 1);
+    if (/\btoday\b/i.test(line)) return base;
+    if (/\bthis week\b/i.test(line)) return Util.addDays(Util.mondayOf(base), 6);
+    if (/\bnext week\b/i.test(line)) return Util.addDays(Util.mondayOf(base), 7);
+    if (/\bend of (this )?month\b/i.test(line)) {
+      const d = Util.parseDate(base);
+      return Util.dateOf(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+    }
+    if ((g = m(/\bby\s+(mon|tue|wed|thu|fri|sat|sun)(?:day)?\b/i))) {
+      const off = { mon:0, tue:1, wed:2, thu:3, fri:4, sat:5, sun:6 }[g[1].toLowerCase()];
+      const d = Util.addDays(Util.mondayOf(base), off);
+      return d < base ? Util.addDays(d, 7) : d;
+    }
+    return '';
+  },
+
+  /**
+   * 把一大段文字拆成条目。
+   * 微信/企微复制过来经常丢换行，所以有兜底：按「时间戳 + 人名」再切一次。
+   */
+  split(raw){
+    let text = String(raw || '').replace(/\r\n?/g, '\n');
+    if (text.indexOf('\n') === -1 || text.split('\n').filter(l => l.trim()).length < 3) {
+      // 没换行或行太少 → 试着在「时间戳」前断句
+      text = text.replace(/\s*(\d{1,2}[:：]\d{2}\s*(?:AM|PM|am|pm)?)\s*/g, '\n$1 ');
+      text = text.replace(/\s*(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}日?\s+\d{1,2}[:：]\d{2})\s*/g, '\n$1 ');
+      // 还是没有 → 在句末标点断句
+      if (text.indexOf('\n') === -1) {
+        text = text.replace(/([。！？!?；;])\s*/g, '$1\n');
+      }
+    }
+    return text.split('\n').map(l => l.trim()).filter(Boolean);
+  },
+
+  /** 从行首摘掉「人名 + 时间」这层壳，返回 {who, time, body} */
+  stripHeader(line){
+    let s = line, who = '', time = '';
+    let m = s.match(/^[\[【(（]?([^\]】)）:：]{1,12})[\]】)）]?\s*(\d{1,2}[:：]\d{2})\s*[:：]?\s*(.*)$/);
+    if (m && !/\d/.test(m[1])) { who = m[1].trim(); time = m[2]; s = m[3]; }
+    else {
+      m = s.match(/^(\d{1,2}[:：]\d{2})\s*[:：]?\s*(.*)$/);
+      if (m) { time = m[1]; s = m[2]; }
+    }
+    if (!s.trim()) s = line;
+    return { who, time, body: s.trim() };
+  },
+
+  /** 认来源：优先群名/项目名，其次发言人 */
+  detectSource(who, body, known){
+    const m = body.match(/[\[【(（]([^\]】)）]{2,16})[\]】)）]/);
+    if (m && /群|项目|客户|部|组|团队|公司|中心|办/.test(m[1])) return m[1];
+    if (who) return who;
+    const k = (known || []).find(n => n && n.length >= 2 && body.indexOf(n) > -1);
+    if (k) return k;
+    return '';
+  },
+
+  /** 认标签：拿已知标签名去文本里找 */
+  detectTags(text, known){
+    const hit = [];
+    (known || []).forEach(name => { if (name && name.length >= 2 && text.indexOf(name) > -1) hit.push(name); });
+    return hit;
+  },
+
+  /** 把一行正文收拾成"像一件事"的样子 */
+  tidy(body){
+    let t = body
+      .replace(this.REFWD, '')                       // Re: / 转发：
+      .replace(/^[，,、：:；;。\s]+/, '')               // 行首标点
+      .replace(/^(另外|还有|对了|其次|然后|再说|顺便)[，,、:：]?\s*/, '')
+      .replace(/^(麻烦|请务必|请你|请|需要你|需要|帮忙|记得|别忘了|别忘)\s*/g, '')
+      .replace(/^(please|kindly|could you|can you|would you|remember to|don'?t forget to)\s+/i, '')
+      .replace(/^you\s+(need to|should|must)\s+/i, '')
+      .replace(/^你\s*/, '')
+      .replace(/^(好|嗯)[，,、]\s*/, '')
+      .replace(/[。，,、；;：:\s]+$/, '')
+      .trim();
+    if (t.length < 3) t = body.trim();
+    t = t.slice(0, 200);
+    return /^[a-z]/.test(t) ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+  },
+  /**
+   * 主入口。
+   * @returns {Array<{text,isTodo,due,tags,src,raw,time}>}
+   */
+  parse(raw, knownTags, base){
+    const out = [];
+    const lines = this.split(raw);
+    const known = (knownTags || []).slice();
+    for (const line0 of lines) {
+      if (this.QUOTE.test(line0)) continue;
+      if (this.META.test(line0)) continue;
+      if (this.SUBJECTONLY.test(this.stripHeader(line0).body)) continue;   // "Re: 供应商对接"
+
+      const { who, time, body } = this.stripHeader(line0);
+      if (!body) continue;
+
+      // 纯人名 / 纯群名 / 纯时间戳：这是"谁说的"那层壳，不是内容
+      if (this.TIMEONLY.test(body) || this.TIMEONLY.test(line0)) continue;
+      if (this.GROUPONLY.test(body) || this.GROUPONLY.test(line0)) continue;
+      if (this.NAMEONLY.test(body) && body.length <= 16) continue;
+
+      const isNoise = this.NOISE.test(body) && body.length < 24;
+      const isAction = this.ACTION.test(body) || this.BARE_ACTION.test(body);
+      const due = this.detectDue(body, base);
+      const tags = this.detectTags(body, known);
+      const src = this.detectSource(who, body, known);
+
+      // 判定：有动作词 → 待办；有明确时间但没动作词的长句 → 也算待办
+      const isTodo = !isNoise && (isAction || (!!due && body.length >= 8));
+
+      if (isNoise && !isTodo) continue;      // 纯闲聊，不留
+
+      out.push({
+        text: this.tidy(body),
+        isTodo: !!isTodo,
+        due: isTodo ? due : '',
+        tags,
+        src,
+        time: time || '',
+        raw: line0,
+      });
+    }
+    return out;
+  }
+};
+
+
+/* ═══════════════════════════════════════════════════════════
+   App · 路由与启动
+   ═══════════════════════════════════════════════════════════ */
+const App = {
+  routes: [
+    { id:'records',  icon:'✍️', name:'随手记', onShow: () => Records.render() },
+    { id:'sort',     icon:'🔍', name:'智能整理', onShow: () => Sorter.render() },
+    { id:'todos',    icon:'✅', name:'待办',  onShow: () => Todos.render() },
+    { id:'today',    icon:'📋', name:'今日',  onShow: () => Today.render() },
+    { id:'review',   icon:'🌙', name:'复盘',  onShow: () => Review.render() },
+    { id:'tags',     icon:'🏷️', name:'标签',  onShow: () => Tags.render() },
+    { id:'week',     icon:'📊', name:'周报',  onShow: () => Reports.renderWeek() },
+    { id:'month',    icon:'📆', name:'月报',  onShow: () => Month.render() },
+    { id:'search',   icon:'🔎', name:'检索',  onShow: () => Search.render() },
+    { id:'settings', icon:'⚙️', name:'设置',  onShow: () => Settings.render() }
+  ],
+
+  go(id){
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    document.getElementById('page-' + id)?.classList.add('on');
+    document.querySelectorAll('#nav button').forEach(b =>
+      b.classList.toggle('on', b.dataset.id === id));
+    document.getElementById('main').scrollTop = 0;
+    Store.set('_lastPage', id);
+    this.routes.find(r => r.id === id)?.onShow?.();
+  },
+
+  init(){
+    Store.migrate();
+    document.body.className = Store.get('_theme', 't-night');
+    document.getElementById('brandLogo').innerHTML = avatarHtml(46);
+
+    document.getElementById('nav').innerHTML = this.routes.map(r =>
+      `<button data-id="${r.id}" onclick="App.go('${r.id}')">
+         <span class="ico">${r.icon}</span>${r.name}
+       </button>`).join('');
+
+    const last = Store.get('_lastPage');
+    this.go(this.routes.some(r => r.id === last) ? last : 'today');
+
+    this.checkBackup();
+    if (typeof Sync !== 'undefined') Sync.init();
+  },
+
+  refresh(){
+    const cur = document.querySelector('.page.on');
+    if (!cur) return;
+    const id = cur.id.replace('page-', '');
+    this.routes.find(r => r.id === id)?.onShow?.();
+  },
+
+  // 用户永远不会主动点导出，所以要主动提醒
+  checkBackup(){
+    const last = Store.get('_lastBackup');
+    const write = Store.get('_lastWrite');
+    if (!write) return;
+    const days = last ? (Date.now() - last) / 864e5 : 99;
+    if (days < 7) return;
+    UI.banner(
+      `<span>${last ? '已经 ' + Math.floor(days) + ' 天没备份了' : '记得备份一下，数据只在这台设备上'}</span>
+       <button onclick="App.go('settings')">去备份</button>`);
+  }
+};
+
+
+/* ═══════════════════════════════════════════════════════════
+   Settings · 设置页
+   ═══════════════════════════════════════════════════════════ */
+const Settings = {
+  render(){
+    this.refreshBackupInfo();
+    this.renderSync();
+    this.renderAvatar();
+  },
+
+  renderAvatar(){
+    const box = document.getElementById('avatarBox');
+    if (box) box.innerHTML = avatarHtml(64);
+  },
+
+  setTheme(cls){
+    Store.set('_theme', cls);
+    document.body.className = cls;
+    document.querySelector('meta[name=theme-color]')
+      ?.setAttribute('content', cls === 't-night' ? '#211C15' : (cls === 't-light' ? '#3A2E22' : '#FFFDF8'));
+    UI.toast('配色换了，数据一条没动');
+  },
+
+  async uploadAvatar(input){
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      // 头像压到 400px 就够。不压的话手机原图一张 3-5MB，几张就撑爆存储，所有功能一起失效
+      const dataUrl = await Util.compressImage(f, 400, .8);
+      Store.set('_avatar', dataUrl);
+      this.renderAvatar();
+      document.getElementById('brandLogo').innerHTML = avatarHtml(46);
+      UI.toast('头像换好了');
+    } catch(e){ UI.toast('这张图读不了，换一张试试'); }
+    input.value = '';
+  },
+
+  resetAvatar(){
+    Store.remove('_avatar');
+    this.renderAvatar();
+    document.getElementById('brandLogo').innerHTML = avatarHtml(46);
+    UI.toast('已换回默认皮卡丘');
+  },
+
+  enableSync(){
+    Sync.enable(document.getElementById('syncUser').value,
+                document.getElementById('syncPass').value);
+  },
+
+  changePass(){
+    const np = prompt('输入新密码（至少 8 位）');
+    if (np) Sync.changePass(np);
+  },
+
+  renderSync(){
+    const card = document.getElementById('syncCard');
+    if (!card || typeof Sync === 'undefined') return;
+    const on = Sync.on();
+    document.getElementById('syncOff').style.display = on ? 'none' : 'block';
+    document.getElementById('syncOn').style.display  = on ? 'block' : 'none';
+    if (on) {
+      document.getElementById('syncWho').textContent = Sync.cfg().user;
+      const t = Store.get('_syncAt');
+      document.getElementById('syncTime').textContent =
+        t ? new Date(t).toLocaleString('zh-CN') : '还没同步过';
+    }
+  },
+
+  refreshBackupInfo(){
+    const last = Store.get('_lastBackup');
+    const el = document.getElementById('backupInfo');
+    if (el) el.textContent = last
+      ? '上次备份：' + new Date(last).toLocaleDateString('zh-CN')
+      : '还没备份过';
+  }
+};
+
+
+/* ==== 双端同步 START ====
+   三条设计红线，破了就会烧掉免费额度或者丢数据：
+   1. 本地优先 —— 写入永远先落 localStorage，界面立刻变。云端是异步的。
+   2. 绝不轮询 —— 只在「打开时 / 切回前台 / 手动刷新」拉取。
+   3. 推送防抖 —— 改动后等 4 秒再推，把连续操作合并成一次请求。 */
+const Sync = {
+  DEBOUNCE: 4000,
+  _timer: null,
+  _busy: false,
+
+  cfg(){ return Store.get('_sync', { on:false, user:'' }); },
+  on(){ return !!this.cfg().on; },
+  pass(){ return Store.getSecret('syncPass') || ''; },
+
+  async call(action, extra = {}){
+    const c = this.cfg();
+    const r = await fetch('/api/sync', {
+      method:'POST',
+      headers:{ 'content-type':'application/json' },
+      body: JSON.stringify(Object.assign({ action, user:c.user, pass:this.pass() }, extra))
+    });
+    const j = await r.json().catch(() => ({ error:'返回格式不对' }));
+    if (!r.ok) throw new Error(j.error || ('请求失败 ' + r.status));
+    return j;
+  },
+
+  async enable(user, pass){
+    user = (user || '').trim().toLowerCase();
+    if (user.length < 3) return UI.toast('用户名至少 3 个字符');
+    if ((pass || '').length < 8) return UI.toast('密码至少 8 位');
+    Store.set('_sync', { on:true, user });
+    Store.setSecret('syncPass', pass);
+    try {
+      const j = await this.call('push', { data: Store.dump() });
+      if (j.data) Store.mergeRemote(j.data);
+      Store.set('_syncAt', Date.now());
+      UI.toast(j.created ? '同步已开启' : '已连上，数据已合并');
+      setTimeout(() => location.reload(), 900);
+    } catch(e){
+      Store.set('_sync', { on:false, user:'' });
+      Store.setSecret('syncPass', '');
+      UI.toast(e.message);
+    }
+  },
+
+  disable(){
+    if (!confirm('关闭同步？本地数据一条不会少，只是不再和云端对齐。')) return;
+    Store.set('_sync', { on:false, user:'' });
+    Store.setSecret('syncPass', '');
+    UI.toast('已关闭同步');
+    Settings.renderSync();
+  },
+
+  async changePass(np){
+    if ((np || '').length < 8) return UI.toast('新密码至少 8 位');
+    try {
+      await this.call('chpass', { newPass: np });
+      Store.setSecret('syncPass', np);
+      UI.toast('密码已改');
+    } catch(e){ UI.toast(e.message); }
+  },
+
+  async pull(loud){
+    if (!this.on() || this._busy) return;
+    this._busy = true;
+    this.status('同步中');
+    try {
+      const j = await this.call('pull');
+      const n = Store.mergeRemote(j.data || {});
+      Store.set('_syncAt', Date.now());
+      this.status('已同步');
+      if (n) { if (loud) UI.toast('拉到 ' + n + ' 处更新'); App.refresh(); }
+      else if (loud) UI.toast('已是最新');
+    } catch(e){
+      this.status('未同步');
+      if (loud) UI.toast(e.message.includes('NO_ACCOUNT') ? '云端还没有数据' : e.message);
+    } finally { this._busy = false; }
+  },
+
+  schedule(){
+    if (!this.on()) return;
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => this.push(), this.DEBOUNCE);
+  },
+
+  async push(){
+    if (!this.on() || this._busy) return;
+    this._busy = true;
+    this.status('同步中');
+    try {
+      const j = await this.call('push', { data: Store.dump() });
+      if (j.data) Store.mergeRemote(j.data);
+      Store.set('_syncAt', Date.now());
+      this.status('已同步');
+    } catch(e){
+      this.status('未同步');
+      console.warn('同步失败，本地数据不受影响：', e.message);
+    } finally { this._busy = false; }
+  },
+
+  status(t){
+    const el = document.getElementById('syncState');
+    if (el) el.textContent = t;
+  },
+
+  init(){
+    if (!this.on()) return;
+    this.pull();
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) this.pull();     // 切回前台再拉一次。到此为止，不轮询
+    });
+    window.addEventListener('online', () => this.push());
+  }
+};
+/* ==== 双端同步 END ==== */
+
+
+/* ==== 功能：随手记 START ==== */
+const Records = {
+  _tags: [],
+
+  render(){
+    this.renderTagPick();
+    const list = Data.sorted().slice(0, 40);
+    document.getElementById('recCount').textContent =
+      list.length ? '共 ' + Data.all().length + ' 条' : '';
+    document.getElementById('recList').innerHTML = UI.rows(list, r => this.rowHtml(r),
+      '还没有记录。上面那个框里写一句，或者去「智能整理」粘一段聊天记录。');
+  },
+
+  rowHtml(r){
+    const meta = [];
+    (r.tags || []).forEach(t => meta.push(`<span class="tag">${Util.esc(t)}</span>`));
+    if (r.isTodo && r.due) meta.push(`<span class="tag due">${Util.esc(Util.relDate(r.due))}</span>`);
+    if (!r.isTodo) meta.push('<span class="tag">备忘</span>');
+    if (r.src) meta.push(`<span class="tag">${Util.esc(r.src)}</span>`);
+    return `<div class="item ${r.done ? 'done' : ''}">
+      <div class="box" onclick="Records.toggle('${r.id}')">${r.done ? '✓' : ''}</div>
+      <div class="grow">
+        <div class="txt">${Util.esc(r.text)}</div>
+        <div>${meta.join('')}<span class="tag">${Util.esc(Util.cnDate(r.t))}</span></div>
+      </div>
+      <button class="del" onclick="Records.del('${r.id}')">✕</button>
+    </div>`;
+  },
+
+  renderTagPick(){
+    const used = Data.usedTags().slice(0, 6);
+    const reg = Data.tags().map(t => t.name).filter(n => used.indexOf(n) === -1).slice(0, 4);
+    const all = used.concat(reg);
+    document.getElementById('recTagPick').innerHTML = all.length
+      ? all.map(n => `<span class="tag pick ${this._tags.indexOf(n) > -1 ? 'on' : ''}"
+            onclick="Records.pickTag('${Util.esc(n).replace(/'/g,'')}')">${Util.esc(n)}</span>`).join('')
+        + '<span class="tag">点一下选中，可多选</span>'
+      : '<span class="tag">还没有标签，去「标签」页建几个，周报靠它分组</span>';
+  },
+
+  pickTag(name){
+    const i = this._tags.indexOf(name);
+    if (i > -1) this._tags.splice(i, 1); else this._tags.push(name);
+    this.renderTagPick();
+  },
+
+  add(){
+    const el = document.getElementById('recInput');
+    const text = el.value.trim();
+    if (!text) return UI.toast('先写一句再记');
+    const isTodo = document.getElementById('recIsTodo').checked;
+    Data.add({ text, isTodo, tags: this._tags.slice() });
+    this._tags = [];
+    el.value = '';
+    this.renderTagPick();
+    el.focus();
+    UI.toast(isTodo ? '记下了，进待办清单了' : '记下了');
+  },
+
+  toggle(id){
+    const rec = Data.all().find(r => r.id === id);
+    if (!rec) return;
+    const wasDone = rec.done;
+    const name = rec.text.slice(0, 12) + (rec.text.length > 12 ? '…' : '');
+    Data.toggleDone(id);
+    this.render();
+    if (wasDone) { UI.toast('已收回，变回待办'); return; }
+    UI.toastUndo('已完成：' + name, '撤销', () => {
+      Data.toggleDone(id);
+      UI.toast('已收回，还是待办');
+      App.refresh();
+    });
+  },
+
+  del(id){ Data.remove(id); this.render(); }
+};
+/* ==== 功能：随手记 END ==== */
+
+
+/* ==== 功能：智能整理 START ==== */
+const Sorter = {
+  _items: [],
+
+  render(){ this.clear(); },
+
+  clear(){
+    this._items = [];
+    const out = document.getElementById('sortOut');
+    if (out) out.innerHTML = '<div class="empty">把聊天记录粘到上面，点「识别要跟的事」</div>';
+    const c = document.getElementById('sortCount');
+    if (c) c.textContent = '';
+    const ta = document.getElementById('sortInput');
+    if (ta) ta.value = '';
+  },
+
+  run(){
+    const raw = document.getElementById('sortInput').value;
+    if (!raw.trim()) return UI.toast('先粘一段文字进来');
+    // 原文只留本机（local$ 前缀：不进云端、不进备份），只留最近 10 段
+    const keep = Store.getLocal('pasteRaw', []);
+    keep.push({ id: Util.uid(), t: Util.today(), at: new Date().toISOString(), text: raw.slice(0, 20000) });
+    while (keep.length > 10) keep.shift();
+    Store.setLocal('pasteRaw', keep);
+
+    const known = Data.tags().map(t => t.name).concat(Data.usedTags());
+    this._items = Parser.parse(raw, known);
+    this.paint();
+    const n = this._items.filter(i => i.isTodo).length;
+    UI.toast(n ? '挑出 ' + n + ' 件要跟的事' : '没认出明确要跟的事，原文已留档');
+  },
+
+  paint(){
+    const out = document.getElementById('sortOut');
+    const items = this._items;
+    document.getElementById('sortCount').textContent =
+      items.length ? items.filter(i => i.isTodo).length + ' 件待办 / 共 ' + items.length + ' 条' : '';
+
+    if (!items.length) {
+      out.innerHTML = `<div class="empty">这段里没认出要跟的事。<br>
+        可能是纯闲聊，也可能对方的说法比较绕——你可以回「随手记」手动记一条。</div>`;
+      return;
+    }
+
+    const known = Data.usedTags().concat(Data.tags().map(t => t.name))
+      .filter((v,i,a) => a.indexOf(v) === i);
+
+    out.innerHTML = items.map((it, i) => `
+      <div class="prow ${it.isTodo ? '' : 'off'}" id="prow${i}">
+        <div class="box" onclick="Sorter.flip(${i})">${it.isTodo ? '✓' : ''}</div>
+        <div class="grow">
+          <div class="txt">${Util.esc(it.text)}</div>
+          <div style="margin-top:2px">
+            <span class="tag">${it.isTodo ? '待办' : '备忘（点方框可改成待办）'}</span>
+            ${it.due ? `<span class="tag due">${Util.esc(Util.relDate(it.due))}</span>` : ''}
+            ${it.src ? `<span class="tag">${Util.esc(it.src)}</span>` : ''}
+            ${(it.tags || []).map(t => `<span class="tag">${Util.esc(t)}</span>`).join('')}
+          </div>
+          ${it.isTodo ? `<div class="chips">${known.slice(0, 8).map(n =>
+            `<span class="tag pick ${(it.tags||[]).indexOf(n) > -1 ? 'on' : ''}"
+              onclick="Sorter.tag(${i},'${Util.esc(n).replace(/'/g,'')}')">${Util.esc(n)}</span>`).join('')}
+            <span class="tag pick" onclick="Sorter.pickDate(${i})">${it.due ? '改截止日' : '定截止日'}</span></div>` : ''}
+        </div>
+      </div>`).join('')
+      + `<div class="row" style="margin-top:16px">
+           <button class="btn" onclick="Sorter.import()">导入选中的</button>
+           <button class="btn ghost" onclick="Sorter.clear()">清空</button>
+         </div>
+         <p class="hint">方框点一下能改「待办 / 备忘」。标签点一下选中，可以多选。确认没问题再点导入。</p>`;
+  },
+
+  flip(i){
+    const it = this._items[i];
+    if (!it) return;
+    it.isTodo = !it.isTodo;
+    if (!it.isTodo) it.due = '';
+    this.paint();
+  },
+
+  tag(i, name){
+    const it = this._items[i];
+    if (!it) return;
+    it.tags = it.tags || [];
+    const k = it.tags.indexOf(name);
+    if (k > -1) it.tags.splice(k, 1); else it.tags.push(name);
+    this.paint();
+  },
+
+  pickDate(i){
+    const it = this._items[i];
+    if (!it) return;
+    const cur = it.due || Util.today();
+    const s = prompt('截止日期（YYYY-MM-DD）。\n留空表示不设截止。\n\n明天：' + Util.addDays(Util.today(),1)
+      + '　本周日：' + Util.addDays(Util.mondayOf(Util.today()),6), cur);
+    if (s === null) return;
+    it.due = s.trim();
+    this.paint();
+  },
+
+  import(){
+    const items = this._items.filter(i => i.isTodo);
+    if (!items.length) return UI.toast('没有勾成待办的内容');
+    if (!confirm('把这 ' + items.length + ' 件导入待办清单？\n（原文已经留档，没导入的不会丢）')) return;
+    items.forEach(it => {
+      it.tags.forEach(n => Data.addTag(n));
+      Data.add({ text: it.text, isTodo: true, due: it.due, tags: it.tags, src: it.src });
+    });
+    UI.toast('导入了 ' + items.length + ' 件');
+    setTimeout(() => App.go('todos'), 700);
+  }
+};
+/* ==== 功能：智能整理 END ==== */
+
+
+/* ==== 功能：待办清单 START ==== */
+const Todos = {
+  _showDone: false,
+
+  render(){
+    const open = Data.openTodos();
+    const done = Data.all().filter(r => r.isTodo && r.done)
+      .sort((a,b) => (b.doneAt || '') < (a.doneAt || '') ? -1 : 1);
+    const t = Util.today();
+    const overdue = open.filter(r => r.due && r.due < t);
+    const day = open.filter(r => r.due === t);
+    const week = open.filter(r => r.due && r.due > t && r.due <= Util.addDays(Util.mondayOf(t), 6));
+    const later = open.filter(r => r.due && r.due > Util.addDays(Util.mondayOf(t), 6));
+    const none = open.filter(r => !r.due);
+
+    document.getElementById('todoStat').textContent =
+      open.length + ' 件没完成' + (done.length ? ' · ' + done.length + ' 件已完成' : '');
+    document.getElementById('todoFilterBtn').textContent =
+      this._showDone ? '隐藏已完成的' : '显示已完成的';
+
+    const sect = (title, arr, over) => arr.length
+      ? `<h3 class="grp">${title}（${arr.length}）</h3>` + arr.map(r => this.rowHtml(r, over)).join('')
+      : '';
+
+    let html = '';
+    html += sect('⚠️ 已经逾期', overdue, true);
+    html += sect('今天到期', day);
+    html += sect('本周内', week);
+    html += sect('之后', later);
+    html += sect('没定时间的', none);
+    if (this._showDone && done.length) {
+      html += `<h3 class="grp">已完成的（${done.length}）— 点勾可以收回</h3>`
+        + done.slice(0, 40).map(r => this.rowHtml(r, false, true)).join('');
+    }
+    if (!open.length && !done.length) {
+      html = `<div class="empty">还没有待办。<br>去「随手记」写一条，或「智能整理」粘一段聊天记录。</div>`;
+    } else if (!open.length) {
+      html = `<div class="empty">待办清空了 🎉</div>` + html;
+    }
+    document.getElementById('todoList').innerHTML = html;
+
+    if (open.length && !this._showDone && done.length) {
+      document.getElementById('todoStat').innerHTML =
+        `${open.length} 件没完成 · <span style="color:var(--text)">${done.length} 件已完成</span>`
+        + '（点右边按钮可以收回误勾的）';
+    }
+  },
+
+  rowHtml(r, over, restore){
+    const meta = [];
+    if (r.due) meta.push(`<span class="tag ${over ? 'over' : 'due'}">${Util.esc(Util.relDate(r.due))}</span>`);
+    (r.tags || []).forEach(t => meta.push(`<span class="tag">${Util.esc(t)}</span>`));
+    if (r.src) meta.push(`<span class="tag">${Util.esc(r.src)}</span>`);
+    if (restore) meta.push('<span class="tag">点勾收回</span>');
+    return `<div class="item ${r.done ? 'done' : ''}">
+      <div class="box" onclick="Todos.toggle('${r.id}')" title="${r.done ? '点一下收回，变回待办' : '点一下完成'}">${r.done ? '✓' : ''}</div>
+      <div class="grow">
+        <div class="txt">${Util.esc(r.text)}</div>
+        <div>${meta.join('')}</div>
+      </div>
+      <button class="del" onclick="Todos.del('${r.id}')">✕</button>
+    </div>`;
+  },
+
+  toggleDone(){ this._showDone = !this._showDone; this.render(); },
+
+  toggle(id){
+    const rec = Data.all().find(r => r.id === id);
+    if (!rec) return;
+    const wasDone = rec.done;                       // 已经是完成态就是「收回」，不是「完成」
+    const name = rec.text.slice(0, 12) + (rec.text.length > 12 ? '…' : '');
+    Data.toggleDone(id);
+    this.render();
+    if (wasDone) { UI.toast('已收回，变回待办'); return; }
+    UI.toastUndo('已完成：' + name, '撤销', () => {
+      Data.toggleDone(id);
+      UI.toast('已收回，还是待办');
+      App.refresh();
+    });
+  },
+
+  del(id){ Data.remove(id); this.render(); }
+};
+/* ==== 功能：待办清单 END ==== */
+
+
+/* ==== 功能：今日 START ==== */
+const Today = {
+  render(){
+    const t = Util.today();
+    document.getElementById('todayDate').textContent = Util.cnDate(t);
+
+    const open = Data.openTodos();
+    const doneToday = Data.doneOn(t);
+    const overdue = open.filter(r => r.due && r.due < t);
+    const dueToday = open.filter(r => r.due === t);
+    const rest = open.filter(r => !r.due || r.due > t);
+
+    document.getElementById('todayHero').textContent = open.length;
+    document.getElementById('todayHeroSub').textContent =
+      '件要跟的事' + (overdue.length ? '，其中 ' + overdue.length + ' 件已经逾期' : '')
+      + (doneToday.length ? ' · 今天已完成 ' + doneToday.length + ' 件' : '');
+
+    const pick = overdue.concat(dueToday, rest).slice(0, 12);
+    document.getElementById('todayTodos').innerHTML = UI.rows(pick, r => {
+      const meta = [];
+      if (r.due) meta.push(`<span class="tag ${r.due < t ? 'over' : 'due'}">${Util.esc(Util.relDate(r.due))}</span>`);
+      (r.tags || []).forEach(x => meta.push(`<span class="tag">${Util.esc(x)}</span>`));
+      return `<div class="item">
+        <div class="box" onclick="Today.toggle('${r.id}')"></div>
+        <div class="grow"><div class="txt">${Util.esc(r.text)}</div><div>${meta.join('')}</div></div>
+      </div>`;
+    }, '今天没有要跟的事，清空了 🎉');
+
+    const incoming = Data.on(t).filter(r => !r.done);
+    document.getElementById('todayIn').innerHTML = UI.rows(incoming, r =>
+      `<div class="item"><div class="grow">
+         <div class="txt">${Util.esc(r.text)}</div>
+         <div>${r.isTodo ? '<span class="tag">待办</span>' : '<span class="tag">备忘</span>'}
+           ${(r.tags || []).map(x => `<span class="tag">${Util.esc(x)}</span>`).join('')}
+           ${r.src ? `<span class="tag">${Util.esc(r.src)}</span>` : ''}</div>
+       </div></div>`, '今天还没记东西');
+
+    document.getElementById('todayDone').innerHTML = UI.rows(doneToday, r =>
+      `<div class="item done">
+         <div class="box" onclick="Today.restore('${r.id}')" title="点一下收回，变回没完成">✓</div>
+         <div class="grow"><div class="txt">${Util.esc(r.text)}</div>
+           <div><span class="tag">点左边的勾可以收回</span></div></div>
+       </div>`,
+      '今天还没有勾掉的事');
+  },
+
+  toggle(id){
+    const rec = Data.all().find(r => r.id === id);
+    if (!rec) return;
+    const wasDone = rec.done;
+    const name = rec.text.slice(0, 12) + (rec.text.length > 12 ? '…' : '');
+    Data.toggleDone(id);
+    this.render();
+    if (wasDone) { UI.toast('已收回，变回待办'); return; }
+    // 误点最高频，所以给一条后悔路
+    UI.toastUndo('已完成：' + name, '撤销', () => {
+      Data.toggleDone(id);
+      UI.toast('已收回，还是待办');
+      App.refresh();
+    });
+  },
+
+  /** 把已完成的待办收回，变回没完成 */
+  restore(id){
+    Data.toggleDone(id);
+    this.render();
+    UI.toast('已收回，变回待办');
+  },
+
+  copy(){ Util.copy(Data.reminderText()); }
+};
+/* ==== 功能：今日 END ==== */
+
+
+/* ==== 功能：每日复盘 START ==== */
+const Review = {
+  key(){ return 'review:' + Util.today(); },
+
+  load(){ return Store.get(this.key(), { top:'', block:'', next:'' }); },
+
+  render(){
+    const d = this.load();
+    document.getElementById('rvTop').value = d.top || '';
+    document.getElementById('rvBlock').value = d.block || '';
+    document.getElementById('rvNext').value = d.next || '';
+
+    const t = Util.today();
+    const recs = Data.on(t);
+    document.getElementById('rvContext').innerHTML = UI.rows(recs, r =>
+      `<div class="item ${r.done ? 'done' : ''}"><div class="grow">
+         <div class="txt">${Util.esc(r.text)}</div>
+         <div>${r.isTodo ? '<span class="tag">待办</span>' : '<span class="tag">备忘</span>'}
+           ${r.done ? '<span class="tag">已完成</span>' : ''}
+           ${(r.tags || []).map(x => `<span class="tag">${Util.esc(x)}</span>`).join('')}</div>
+       </div></div>`, '今天还没记东西');
+  },
+
+  save(){
+    const d = {
+      top: document.getElementById('rvTop').value.trim(),
+      block: document.getElementById('rvBlock').value.trim(),
+      next: document.getElementById('rvNext').value.trim(),
+    };
+    if (!d.top && !d.block && !d.next) return UI.toast('一个字都没写呢');
+    Store.set(this.key(), d);
+    // 明天第一件事顺手进待办，省得明天又想不起来
+    if (d.next && !Data.openTodos().some(r => r.text === d.next)) {
+      Data.add({ text: d.next, isTodo: true, due: Util.addDays(Util.today(), 1), src: '复盘' });
+    }
+    UI.toast('存好了' + (d.next ? '，「明天第一件事」也加进待办了' : ''));
+  }
+};
+/* ==== 功能：每日复盘 END ==== */
+
+
+/* ==== 功能：项目标签 START ==== */
+const Tags = {
+  render(){
+    const used = Data.usedTags();
+    const list = Data.tags();
+    const all = list.map(t => t.name);
+    used.forEach(n => { if (all.indexOf(n) === -1) all.push(n); });
+
+    document.getElementById('tagList').innerHTML = all.length
+      ? all.map(name => {
+          const reg = list.find(t => t.name === name);
+          const n = Data.all().filter(r => (r.tags || []).indexOf(name) > -1).length;
+          const open = Data.openTodos().filter(r => (r.tags || []).indexOf(name) > -1).length;
+          return `<div class="item">
+            <div class="grow">
+              <div class="txt">${Util.esc(name)}</div>
+              <div><span class="tag">${n} 条记录</span>${open ? `<span class="tag">${open} 件没完成</span>` : ''}
+                ${reg ? '' : '<span class="tag">还没登记</span>'}</div>
+            </div>
+            ${reg ? `<button class="del" onclick="Tags.del('${reg.id}')">✕</button>` : ''}
+          </div>`;
+        }).join('')
+      : '<div class="empty">还没有标签。建 3-8 个，周报月报就能按项目分组了。</div>';
+  },
+
+  add(){
+    const el = document.getElementById('tagInput');
+    const name = el.value.trim();
+    if (!name) return;
+    Data.addTag(name);
+    el.value = '';
+    this.render();
+    UI.toast('加好了');
+  },
+
+  del(id){ Data.removeTag(id); this.render(); }
+};
+/* ==== 功能：项目标签 END ==== */
+
+
+/* ==== 功能：周报 START ==== */
+const Reports = {
+  _weekOffset: 0,
+
+  weekRange(){
+    const monday = Util.addDays(Util.mondayOf(Util.today()), this._weekOffset * 7);
+    return { from: monday, to: Util.addDays(monday, 6) };
+  },
+
+  /** 把一个区间的记录整理成可汇报的结构 */
+  collect(from, to){
+    const recs = Data.between(from, to);
+    const doneIn = recs.filter(r => r.done && r.doneAt && r.doneAt.slice(0,10) >= from && r.doneAt.slice(0,10) <= to);
+    const added = recs.filter(r => r.isTodo);
+    const stillOpen = Data.openTodos().filter(r => r.t <= to);
+    const groups = {};
+    doneIn.forEach(r => {
+      const keys = (r.tags && r.tags.length) ? r.tags : ['未归类'];
+      keys.forEach(k => { (groups[k] = groups[k] || []).push(r); });
+    });
+    return { recs, doneIn, added, stillOpen, groups };
+  },
+
+  /** 按项目分组渲染 */
+  groupsHtml(groups, emptyText){
+    const keys = Object.keys(groups).sort((a,b) => groups[b].length - groups[a].length);
+    if (!keys.length) return `<div class="empty">${emptyText}</div>`;
+    return keys.map(k => `
+      <h3 class="grp">${Util.esc(k)} · ${groups[k].length} 件</h3>
+      ${groups[k].map(r => `<div class="item"><div class="grow">
+        <div class="txt">${Util.esc(r.text)}</div>
+        <div>${r.doneAt ? `<span class="tag">${Util.esc((r.doneAt||'').slice(5,10))} 完成</span>` : ''}
+        ${r.due ? `<span class="tag due">原定 ${Util.esc(r.due)}</span>` : ''}</div>
+      </div></div>`).join('')}`).join('');
+  },
+
+  renderWeek(){
+    const { from, to } = this.weekRange();
+    const c = this.collect(from, to);
+    document.getElementById('weekRange').textContent =
+      from + ' 至 ' + to + (this._weekOffset === 0 ? '（本周）' : '');
+    document.getElementById('weekNav').textContent = this._weekOffset === 0 ? '本周' :
+      (this._weekOffset < 0 ? Math.abs(this._weekOffset) + ' 周前' : this._weekOffset + ' 周后');
+    document.getElementById('weekDone').textContent = c.doneIn.length;
+    document.getElementById('weekSub').textContent =
+      '件完成 · 本周新增 ' + c.added.length + ' 件 · 还有 ' + c.stillOpen.length + ' 件没做完';
+
+    let html = '<h3 class="grp">本周完成的事</h3>' + this.groupsHtml(c.groups, '这一周还没勾掉任何事');
+    if (c.stillOpen.length) {
+      html += '<h3 class="grp" style="margin-top:20px">没做完、需要顺延的（' + c.stillOpen.length + '）</h3>'
+        + c.stillOpen.slice(0, 20).map(r => `<div class="item"><div class="grow">
+            <div class="txt">${Util.esc(r.text)}</div>
+            <div>${r.due ? `<span class="tag due">${Util.esc(Util.relDate(r.due))}</span>` : '<span class="tag">没定时间</span>'}
+              ${(r.tags||[]).map(t => `<span class="tag">${Util.esc(t)}</span>`).join('')}</div>
+          </div></div>`).join('');
+    }
+    document.getElementById('weekBody').innerHTML = html;
+  },
+
+  weekText(){
+    const { from, to } = this.weekRange();
+    const c = this.collect(from, to);
+    const L = ['本周工作（' + from + ' ~ ' + to + '）', ''];
+    const keys = Object.keys(c.groups).sort((a,b) => c.groups[b].length - c.groups[a].length);
+    if (keys.length) {
+      keys.forEach(k => {
+        L.push('【' + k + '】');
+        c.groups[k].forEach(r => L.push('· ' + r.text));
+        L.push('');
+      });
+    } else L.push('（本周没有勾掉的完成项）', '');
+    if (c.stillOpen.length) {
+      L.push('下周计划 / 待跟进：');
+      c.stillOpen.slice(0, 15).forEach(r => L.push('· ' + r.text + (r.due ? '（' + r.due + '）' : '')));
+    }
+    return L.join('\n');
+  },
+
+  shiftWeek(n){ this._weekOffset += n; this.renderWeek(); },
+  weekNow(){ this._weekOffset = 0; this.renderWeek(); },
+  copyWeek(){ Util.copy(this.weekText()); }
+};
+/* ==== 功能：周报 END ==== */
+
+
+/* ==== 功能：月报 START ====
+   和 Reports 共用 collect / groupsHtml（那是同一套「把记录整理成可汇报结构」的逻辑），
+   这里只放月报自己的区间计算和渲染。 */
+const Month = {
+  _offset: 0,
+
+  range(){
+    const d = Util.parseDate(Util.today());
+    const m = new Date(d.getFullYear(), d.getMonth() + this._offset, 1);
+    const last = new Date(m.getFullYear(), m.getMonth() + 1, 0);
+    return { from: Util.dateOf(m), to: Util.dateOf(last),
+             ym: m.getFullYear() + '-' + String(m.getMonth()+1).padStart(2,'0') };
+  },
+
+  render(){
+    const { from, to, ym } = this.range();
+    const c = Reports.collect(from, to);
+    document.getElementById('monthRange').textContent = ym.replace('-', ' 年 ') + ' 月';
+    document.getElementById('monthNav').textContent = this._offset === 0 ? '本月' :
+      (this._offset < 0 ? Math.abs(this._offset) + ' 个月前' : this._offset + ' 个月后');
+    document.getElementById('monthDone').textContent = c.doneIn.length;
+    document.getElementById('monthSub').textContent =
+      '件完成 · 本月新增 ' + c.added.length + ' 件 · 还有 ' + c.stillOpen.length + ' 件没做完';
+
+    const keys = Object.keys(c.groups).sort((a,b) => c.groups[b].length - c.groups[a].length);
+    let html = '<h3 class="grp">本月完成的事（按项目）</h3>'
+      + Reports.groupsHtml(c.groups, '这个月还没勾掉任何事');
+    html += '<h3 class="grp" style="margin-top:20px">量上的分布</h3>'
+      + (keys.length
+          ? keys.map(k => `<div class="item"><div class="grow">
+               <div class="txt">${Util.esc(k)}</div>
+               <div><span class="tag">${c.groups[k].length} 件</span></div>
+             </div></div>`).join('')
+          : '<div class="empty">还没有数据</div>');
+    document.getElementById('monthBody').innerHTML = html;
+  },
+
+  text(){
+    const { from, to, ym } = this.range();
+    const c = Reports.collect(from, to);
+    const L = ['本月工作（' + ym + '）', ''];
+    const keys = Object.keys(c.groups).sort((a,b) => c.groups[b].length - c.groups[a].length);
+    if (keys.length) {
+      keys.forEach(k => {
+        L.push('【' + k + '】' + c.groups[k].length + ' 件');
+        c.groups[k].forEach(r => L.push('· ' + r.text));
+        L.push('');
+      });
+    } else L.push('（本月没有勾掉的完成项）', '');
+    if (c.stillOpen.length) {
+      L.push('下月待跟进：');
+      c.stillOpen.slice(0, 20).forEach(r => L.push('· ' + r.text));
+    }
+    return L.join('\n');
+  },
+
+  shift(n){ this._offset += n; this.render(); },
+  now(){ this._offset = 0; this.render(); },
+  copy(){ Util.copy(this.text()); }
+};
+/* ==== 功能：月报 END ==== */
+
+
+/* ==== 功能：历史检索 START ==== */
+const Search = {
+  render(){
+    const quick = Data.usedTags().slice(0, 8);
+    document.getElementById('searchQuick').innerHTML = quick.length
+      ? quick.map(n => `<span class="tag pick" onclick="Search.byTag('${Util.esc(n).replace(/'/g,'')}')">${Util.esc(n)}</span>`).join('')
+      : '';
+  },
+
+  byTag(name){
+    document.getElementById('searchInput').value = name;
+    this.run();
+  },
+
+  run(){
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    const out = document.getElementById('searchOut');
+    if (!q) { out.innerHTML = '<div class="empty">输入关键词开始搜</div>';
+              document.getElementById('searchCount').textContent = ''; return; }
+    const hits = Data.sorted().filter(r =>
+      (r.text || '').toLowerCase().indexOf(q) > -1
+      || (r.src || '').toLowerCase().indexOf(q) > -1
+      || (r.tags || []).join(' ').toLowerCase().indexOf(q) > -1);
+
+    document.getElementById('searchCount').textContent = hits.length ? hits.length + ' 条' : '没找到';
+    out.innerHTML = UI.rows(hits.slice(0, 100), r =>
+      `<div class="item ${r.done ? 'done' : ''}"><div class="grow">
+         <div class="txt">${Util.esc(r.text)}</div>
+         <div><span class="tag">${Util.esc(Util.cnDate(r.t))}</span>
+           ${r.isTodo ? `<span class="tag">${r.done ? '已完成' : '待办'}</span>` : '<span class="tag">备忘</span>'}
+           ${(r.tags || []).map(x => `<span class="tag">${Util.esc(x)}</span>`).join('')}
+           ${r.src ? `<span class="tag">${Util.esc(r.src)}</span>` : ''}</div>
+       </div></div>`,
+      '没搜到。换个词试试，或者只搜项目名。');
+    if (typeof Parser !== 'undefined') { /* 保留：以后可做模糊匹配 */ }
+  }
+};
+/* ==== 功能：历史检索 END ==== */
+
+
+App.init();
+</script>
+</body>
+</html>
